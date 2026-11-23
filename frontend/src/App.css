@@ -279,3 +279,139 @@
     min-height: 260px;
   }
 }
+
+/* service page estilos */
+
+.servicios-page {
+  min-height: calc(100vh - 80px);
+  padding: 75px 0;
+  background: #f5f8ff;
+}
+
+.servicios-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.servicios-header h1 {
+  color: #0b1b3a;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.servicios-header p {
+  margin-top: 10px;
+  color: #536580;
+  font-size: 16px;
+}
+
+.servicios-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 500px;
+  margin: 0 auto 40px;
+  padding: 14px 18px;
+  border: 1px solid #dce7f7;
+  border-radius: 12px;
+  background: white;
+  color: #0057ff;
+  box-shadow: 0 5px 20px rgba(11, 27, 58, 0.04);
+}
+
+.servicios-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0b1b3a;
+}
+
+.servicios-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.servicio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 28px 16px;
+  border: 1px solid #e2eaf6;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 5px 18px rgba(11, 27, 58, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.servicio-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(11, 27, 58, 0.1);
+}
+
+.servicio-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: 18px;
+  border-radius: 15px;
+  background: #f0f6ff;
+}
+
+.servicio-card h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1b3a;
+}
+
+.servicio-card p {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.servicios-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  color: #64748b;
+  text-align: center;
+}
+
+.servicios-empty h2 {
+  color: #0b1b3a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .servicios-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .servicios-page {
+    padding: 45px 0;
+  }
+
+  .servicios-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .servicios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
