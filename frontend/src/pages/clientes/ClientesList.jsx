@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 import useClientesStore from "../../store/clientesStore";
+import useHogaresStore from "../../store/hogaresStore";
 
 const columnas = [
   { campo: "id", titulo: "ID" },
@@ -19,6 +20,10 @@ function ClientesList() {
   const [busqueda, setBusqueda] = useState("");
 
   const navigate = useNavigate();
+
+  const hogares = useHogaresStore(
+    (state) => state.hogares
+  );
 
   const clientes = useClientesStore(
     (state) => state.clientes
@@ -44,6 +49,17 @@ function ClientesList() {
   }
 
   function manejarEliminar(id) {
+    const tieneHogares = hogares.some(
+      (hogar) => String(hogar.clienteId) === String(id)
+    );
+
+    if (tieneHogares) {
+      alert(
+        "No podés eliminar este cliente porque tiene hogares asociados."
+      );
+      return;
+    }
+
     const confirmado = window.confirm(
       "¿Estás seguro de que querés eliminar este cliente?"
     );

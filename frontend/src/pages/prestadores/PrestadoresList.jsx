@@ -8,6 +8,7 @@ import DataTable from "../../components/ui/DataTable";
 
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useOficiosStore from "../../store/crearOficiosStore";
+import useServiciosStore from "../../store/serviciosStore";
 
 function PrestadoresList() {
   const [busqueda, setBusqueda] = useState("");
@@ -25,6 +26,10 @@ function PrestadoresList() {
   const eliminarPrestador = usePrestadoresStore(
     (state) => state.eliminarPrestador
   );
+  
+  const servicios=useServiciosStore(
+    (state)=> state.servicios
+  )
 
   function obtenerOficio(oficioId) {
     const oficio = oficios.find(
@@ -71,15 +76,27 @@ function PrestadoresList() {
     navigate(`/admin/prestadores/editar/${id}`);
   }
 
-  function manejarEliminar(id) {
-    const confirmado = window.confirm(
-      "¿Estás seguro de que querés eliminar este prestador?"
-    );
+function manejarEliminar(id) {
+  const tieneServicios = servicios.some(
+    (servicio) =>
+      String(servicio.prestadorId) === String(id)
+  );
 
-    if (confirmado) {
-      eliminarPrestador(id);
-    }
+  if (tieneServicios) {
+    alert(
+      "No podés eliminar este prestador porque tiene servicios asociados."
+    );
+    return;
   }
+
+  const confirmado = window.confirm(
+    "¿Estás seguro de que querés eliminar este prestador?"
+  );
+
+  if (confirmado) {
+    eliminarPrestador(id);
+  }
+}
 
   return (
     <section className="crud-page">

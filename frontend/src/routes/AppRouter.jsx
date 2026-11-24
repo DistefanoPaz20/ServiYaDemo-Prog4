@@ -25,6 +25,9 @@ import OficioEdit from "../pages/oficios/OficioEdit";
 import PrestadoresList from "../pages/prestadores/PrestadoresList";
 import PrestadorCreate from "../pages/prestadores/PrestadorCreate";
 import PrestadorEdit from "../pages/prestadores/PrestadorEdit";
+import ServiciosList from "../pages/servicios/ServiciosList";
+import ServicioCreate from "../pages/servicios/ServicioCreate";
+import ServicioEdit from "../pages/servicios/ServicioEdit";
 
 function AppRouter() {
   return (
@@ -59,6 +62,10 @@ function AppRouter() {
       <Route path="/admin/prestadores" element={<PrestadoresList/>}/>
       <Route path="/admin/prestadores/nuevo" element={<PrestadorCreate/>}/>
       <Route path="/admin/prestadores/editar/:id" element={<PrestadorEdit/>}/>
+      <Route path="/admin/servicios" element={<ServiciosList/>}/>
+      <Route path="/admin/servicios/nuevo" element={<ServicioCreate/>}/>
+      <Route path="/admin/servicios/editar/:id" element={<ServicioEdit/>}/>
+
 
 
 
