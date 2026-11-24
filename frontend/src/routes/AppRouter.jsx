@@ -14,6 +14,8 @@ import Registro from "../pages/auth/Registro";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AdminDashboard from "../pages/dashboard/AdminDashboard";
 import ClientesList from "../pages/clientes/ClientesList";
+import ClienteCreate from "../pages/clientes/ClienteCreate";
+import ClienteEdit from "../pages/clientes/ClienteEdit";
 function AppRouter() {
   return (
 
@@ -36,6 +38,10 @@ function AppRouter() {
     <Route element={<DashboardLayout/>}>
       <Route path="/admin" element={<AdminDashboard/>}/>
       <Route path="/admin/clientes" element={<ClientesList/>}/>
+      <Route path="/admin/clientes/nuevo" element={<ClienteCreate/>}/>
+      <Route path="/admin/clientes/editar/:id" element={<ClienteEdit/>}/>
+
+
     </Route>
   </Routes>
 </BrowserRouter>
