@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -11,7 +10,15 @@ import useHogaresStore from "../../store/hogaresStore";
 import useClientesStore from "../../store/clientesStore";
 
 function HogarCreate() {
+
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const rol = location.pathname.split("/")[1];
+  const esCliente = rol === "cliente";
+  const clienteId = 1;
+
+  const rutaBase = `/${rol}/hogares`;
 
   const clientes = useClientesStore(
     (state) => state.clientes
@@ -22,7 +29,7 @@ function HogarCreate() {
   );
 
   const [formulario, setFormulario] = useState({
-    clienteId: "",
+    clienteId: esCliente ? clienteId : "",
     direccion: "",
     localidad: "",
     tipo: "",
@@ -53,27 +60,52 @@ function HogarCreate() {
   function manejarSubmit(e) {
     e.preventDefault();
 
-    const clienteExiste = clientes.some(
+    const propietarioId = esCliente
+      ? clienteId
+      : formulario.clienteId;
+
+    const propietario = clientes.find(
       (cliente) =>
-        String(cliente.id) === String(formulario.clienteId)
+        String(cliente.id) === String(propietarioId)
     );
 
-    if (!clienteExiste) {
+    if (!propietario) {
       alert("Seleccioná un cliente válido.");
       return;
     }
 
-    agregarHogar(formulario);
+    if (
+      !formulario.direccion.trim() ||
+      !formulario.localidad.trim() ||
+      !opcionesTipos.some(
+        (tipo) => tipo.valor === formulario.tipo
+      )
+    ) {
+      alert("Completá correctamente todos los campos obligatorios.");
+      return;
+    }
 
-    navigate("/admin/hogares");
+    agregarHogar({
+      ...formulario,
+      clienteId: propietario.id,
+      direccion: formulario.direccion.trim(),
+      localidad: formulario.localidad.trim(),
+      descripcion: formulario.descripcion.trim()
+    });
+
+    navigate(rutaBase);
   }
 
   return (
     <section className="crud-page">
 
       <PageHeader
-        titulo="Nuevo hogar"
-        descripcion="Registrá una propiedad asociada a un cliente."
+        titulo={esCliente ? "Registrar hogar" : "Nuevo hogar"}
+        descripcion={
+          esCliente
+            ? "Registrá una nueva propiedad en tu cuenta."
+            : "Registrá una propiedad asociada a un cliente."
+        }
       />
 
       <form
@@ -83,15 +115,17 @@ function HogarCreate() {
 
         <div className="crud-form-grid">
 
-          <FormField
-            label="Propietario"
-            nombre="clienteId"
-            tipo="select"
-            valor={formulario.clienteId}
-            opciones={opcionesClientes}
-            onChange={manejarCambio}
-            requerido
-          />
+          {!esCliente && (
+            <FormField
+              label="Propietario"
+              nombre="clienteId"
+              tipo="select"
+              valor={formulario.clienteId}
+              opciones={opcionesClientes}
+              onChange={manejarCambio}
+              requerido
+            />
+          )}
 
           <FormField
             label="Tipo de hogar"
@@ -139,9 +173,10 @@ function HogarCreate() {
         <div className="crud-form-actions">
 
           <Button
+            tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/hogares")}
+            onClick={() => navigate(rutaBase)}
           >
             Cancelar
           </Button>

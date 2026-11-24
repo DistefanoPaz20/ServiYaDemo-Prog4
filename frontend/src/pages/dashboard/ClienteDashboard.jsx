@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+
 import {
   House,
   Wrench,
@@ -8,25 +9,51 @@ import {
   Search
 } from "lucide-react";
 
-import  useHogaresStore  from "../../store/hogaresStore";
-import useServiciosStore  from "../../store/serviciosStore";
+import useHogaresStore from "../../store/hogaresStore";
+import useServiciosStore from "../../store/serviciosStore";
+import usePresupuestosStore from "../../store/presupuestosStore";
+import useClientesStore from "../../store/clientesStore";
 
 function ClienteDashboard() {
 
-  // Cliente provisional hasta implementar la autenticación
+  // Cliente provisional hasta implementar JWT
+
   const clienteId = 1;
 
-  const hogares = useHogaresStore((state) => state.hogares);
-  const servicios = useServiciosStore((state) => state.servicios);
+  const hogares = useHogaresStore(
+    (state) => state.hogares
+  );
+
+  const servicios = useServiciosStore(
+    (state) => state.servicios
+  );
+
+  const presupuestos = usePresupuestosStore(
+    (state) => state.presupuestos
+  );
+
+  const clientes = useClientesStore(
+    (state) => state.clientes
+  );
+
+  const cliente = clientes.find(
+    (c) => String(c.id) === String(clienteId)
+  );
+
+  // HOGARES DEL CLIENTE
 
   const misHogares = hogares.filter(
-    (hogar) => String(hogar.clienteId) === String(clienteId)
+    (hogar) =>
+      String(hogar.clienteId) === String(clienteId)
   );
+
+  // SERVICIOS DEL CLIENTE
 
   const misServicios = servicios.filter(
     (servicio) =>
       misHogares.some(
-        (hogar) => String(hogar.id) === String(servicio.hogarId)
+        (hogar) =>
+          String(hogar.id) === String(servicio.hogarId)
       )
   );
 
@@ -39,6 +66,21 @@ function ClienteDashboard() {
   const serviciosFinalizados = misServicios.filter(
     (servicio) => servicio.estado === "Finalizado"
   );
+
+  // PRESUPUESTOS PENDIENTES DEL CLIENTE
+
+  const presupuestosPendientes = presupuestos.filter(
+    (presupuesto) =>
+      presupuesto.estado === "Pendiente" &&
+      misServicios.some(
+        (servicio) =>
+          String(servicio.id) ===
+            String(presupuesto.servicioId) &&
+          servicio.estado === "Pendiente"
+      )
+  );
+
+  // ESTADÍSTICAS
 
   const estadisticas = [
     {
@@ -53,7 +95,7 @@ function ClienteDashboard() {
     },
     {
       titulo: "Presupuestos pendientes",
-      valor: 0,
+      valor: presupuestosPendientes.length,
       icono: FileText
     },
     {
@@ -67,14 +109,21 @@ function ClienteDashboard() {
     <section className="cliente-dashboard">
 
       <div className="panel-bienvenida">
-        <h2>¡Bienvenido a ServiYa!</h2>
+
+        <h2>
+          ¡Bienvenido, {cliente?.nombre ?? "cliente"}!
+        </h2>
+
         <p>
           Gestioná tus hogares y servicios desde un solo lugar.
         </p>
+
       </div>
 
       <div className="panel-estadisticas">
+
         {estadisticas.map((estadistica) => {
+
           const Icono = estadistica.icono;
 
           return (
@@ -82,18 +131,54 @@ function ClienteDashboard() {
               className="panel-stat-card"
               key={estadistica.titulo}
             >
+
               <div className="panel-stat-icon">
                 <Icono size={24} />
               </div>
 
               <p>{estadistica.titulo}</p>
+
               <h3>{estadistica.valor}</h3>
+
             </article>
           );
         })}
+
       </div>
 
+      {/* PRESUPUESTOS POR RESPONDER */}
+
+      {presupuestosPendientes.length > 0 && (
+
+        <section className="panel-seccion">
+
+          <h2>Tenés presupuestos pendientes</h2>
+
+          <p className="panel-vacio">
+            Tenés {presupuestosPendientes.length} presupuesto(s)
+            esperando tu respuesta.
+          </p>
+
+          <div className="perfil-acciones">
+
+            <Link
+              to="/cliente/presupuestos"
+              className="perfil-boton"
+            >
+              <FileText size={18} />
+              Revisar presupuestos
+            </Link>
+
+          </div>
+
+        </section>
+
+      )}
+
+      {/* ACCIONES RÁPIDAS */}
+
       <section className="panel-seccion">
+
         <h2>Acciones rápidas</h2>
 
         <div className="panel-acciones">
@@ -114,36 +199,52 @@ function ClienteDashboard() {
           </Link>
 
         </div>
+
       </section>
 
+      {/* SERVICIOS RECIENTES */}
+
       <section className="panel-seccion">
+
         <h2>Mis servicios recientes</h2>
 
         {misServicios.length === 0 ? (
+
           <p className="panel-vacio">
             Todavía no tenés servicios registrados.
           </p>
+
         ) : (
+
           <div className="panel-servicios">
 
-            {misServicios.slice(-5).reverse().map((servicio) => (
-              <article
-                className="panel-servicio"
-                key={servicio.id}
-              >
-                <div>
-                  <h3>{servicio.descripcion}</h3>
-                  <p>{servicio.fecha}</p>
-                </div>
+            {misServicios
+              .slice(-5)
+              .reverse()
+              .map((servicio) => (
 
-                <span className="panel-estado">
-                  {servicio.estado}
-                </span>
-              </article>
-            ))}
+                <article
+                  className="panel-servicio"
+                  key={servicio.id}
+                >
+
+                  <div>
+                    <h3>{servicio.descripcion}</h3>
+                    <p>{servicio.fecha}</p>
+                  </div>
+
+                  <span className="panel-estado">
+                    {servicio.estado}
+                  </span>
+
+                </article>
+
+              ))}
 
           </div>
+
         )}
+
       </section>
 
     </section>

@@ -1,4 +1,3 @@
-
 import {
   Users,
   Wrench,
@@ -24,92 +23,176 @@ import {
 
 import StatCard from "../../components/ui/StatCard";
 
-// Estadísticas generales
-
-const estadisticas = [
-  {
-    titulo: "Clientes",
-    valor: 25,
-    icono: Users,
-    color: "#0057FF"
-  },
-  {
-    titulo: "Prestadores",
-    valor: 15,
-    icono: Wrench,
-    color: "#16A34A"
-  },
-  {
-    titulo: "Hogares",
-    valor: 30,
-    icono: House,
-    color: "#9333EA"
-  },
-  {
-    titulo: "Servicios",
-    valor: 48,
-    icono: ClipboardList,
-    color: "#EA580C"
-  }
-];
-
-// Datos del gráfico de barras
-
-const serviciosPorOficio = [
-  { oficio: "Plomería", cantidad: 12 },
-  { oficio: "Electricidad", cantidad: 10 },
-  { oficio: "Cerrajería", cantidad: 5 },
-  { oficio: "Pintura", cantidad: 8 },
-  { oficio: "Climatización", cantidad: 7 },
-  { oficio: "Carpintería", cantidad: 6 }
-];
-
-// Datos del gráfico circular
-
-const estadosServicios = [
-  { estado: "Finalizados", cantidad: 28 },
-  { estado: "En proceso", cantidad: 12 },
-  { estado: "Pendientes", cantidad: 8 }
-];
-
-// Datos del gráfico de líneas
-
-const serviciosPorDia = [
-  { dia: "Lunes", cantidad: 4 },
-  { dia: "Martes", cantidad: 6 },
-  { dia: "Miércoles", cantidad: 5 },
-  { dia: "Jueves", cantidad: 8 },
-  { dia: "Viernes", cantidad: 7 },
-  { dia: "Sábado", cantidad: 11 },
-  { dia: "Domingo", cantidad: 7 }
-];
-
-const colores = [
-  "#16A34A",
-  "#0057FF",
-  "#F59E0B"
-];
+import useClientesStore from "../../store/clientesStore";
+import usePrestadoresStore from "../../store/prestadoresStore";
+import useHogaresStore from "../../store/hogaresStore";
+import useServiciosStore from "../../store/serviciosStore";
+import useOficiosStore from "../../store/crearOficiosStore";
 
 function AdminDashboard() {
+
+  const clientes = useClientesStore(
+    (state) => state.clientes
+  );
+
+  const prestadores = usePrestadoresStore(
+    (state) => state.prestadores
+  );
+
+  const hogares = useHogaresStore(
+    (state) => state.hogares
+  );
+
+  const servicios = useServiciosStore(
+    (state) => state.servicios
+  );
+
+  const oficios = useOficiosStore(
+    (state) => state.oficios
+  );
+
+  // ESTADÍSTICAS GENERALES
+
+  const estadisticas = [
+    {
+      titulo: "Clientes",
+      valor: clientes.length,
+      icono: Users,
+      color: "#0057FF"
+    },
+    {
+      titulo: "Prestadores",
+      valor: prestadores.length,
+      icono: Wrench,
+      color: "#16A34A"
+    },
+    {
+      titulo: "Hogares",
+      valor: hogares.length,
+      icono: House,
+      color: "#9333EA"
+    },
+    {
+      titulo: "Servicios",
+      valor: servicios.length,
+      icono: ClipboardList,
+      color: "#EA580C"
+    }
+  ];
+
+  // SERVICIOS POR OFICIO
+
+  const serviciosPorOficio = oficios.map((oficio) => {
+
+    const cantidad = servicios.filter((servicio) => {
+
+      const prestador = prestadores.find(
+        (p) =>
+          String(p.id) === String(servicio.prestadorId)
+      );
+
+      return (
+        String(prestador?.oficioId) === String(oficio.id)
+      );
+
+    }).length;
+
+    return {
+      oficio: oficio.nombre,
+      cantidad
+    };
+  });
+
+  // ESTADOS DE LOS SERVICIOS
+
+  const estadosServicios = [
+    {
+      estado: "Finalizados",
+      cantidad: servicios.filter(
+        (s) => s.estado === "Finalizado"
+      ).length,
+      color: "#16A34A"
+    },
+    {
+      estado: "En proceso",
+      cantidad: servicios.filter(
+        (s) => s.estado === "En proceso"
+      ).length,
+      color: "#0057FF"
+    },
+    {
+      estado: "Pendientes",
+      cantidad: servicios.filter(
+        (s) => s.estado === "Pendiente"
+      ).length,
+      color: "#F59E0B"
+    },
+    {
+      estado: "Cancelados",
+      cantidad: servicios.filter(
+        (s) => s.estado === "Cancelado"
+      ).length,
+      color: "#DC2626"
+    }
+  ];
+
+  // SERVICIOS DE LOS ÚLTIMOS 7 DÍAS
+
+  const serviciosPorDia = Array.from(
+    { length: 7 },
+    (_, index) => {
+
+      const fecha = new Date();
+
+      fecha.setDate(
+        fecha.getDate() - (6 - index)
+      );
+
+      const anio = fecha.getFullYear();
+
+      const mes = String(
+        fecha.getMonth() + 1
+      ).padStart(2, "0");
+
+      const dia = String(
+        fecha.getDate()
+      ).padStart(2, "0");
+
+      const fechaISO = `${anio}-${mes}-${dia}`;
+
+      const cantidad = servicios.filter(
+        (servicio) =>
+          String(servicio.fecha).slice(0, 10) === fechaISO
+      ).length;
+
+      return {
+        dia: `${dia}/${mes}`,
+        cantidad
+      };
+    }
+  );
+
   return (
     <section className="admin-dashboard">
 
-      {/* Encabezado */}
+      {/* ENCABEZADO */}
 
       <div className="admin-header">
         <h2>Resumen general</h2>
+
         <p>
           Gestioná y supervisá la actividad de ServiYa.
         </p>
 
         <span className="admin-demo">
-          Datos de demostración
+          Datos del sistema
         </span>
       </div>
 
-      {/* Tarjetas de estadísticas */}
+      {/* TARJETAS DE ESTADÍSTICAS */}
 
       <div className="admin-stats">
+
         {estadisticas.map((estadistica) => (
           <StatCard
             key={estadistica.titulo}
@@ -119,20 +202,28 @@ function AdminDashboard() {
             color={estadistica.color}
           />
         ))}
-      </div>
 
-      {/* Contenedor general de gráficos */}
+      </div>
 
       <div className="admin-charts">
 
-        {/* GRÁFICO 1: BARRAS */}
+        {/* GRÁFICO DE BARRAS */}
 
         <article className="admin-chart-card">
+
           <h3>Servicios por oficio</h3>
-          <p>Cantidad de servicios por especialidad.</p>
+
+          <p>
+            Cantidad de servicios por especialidad.
+          </p>
 
           <div className="admin-chart">
-            <ResponsiveContainer width="100%" height="100%">
+
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
+
               <BarChart data={serviciosPorOficio}>
 
                 <CartesianGrid
@@ -161,57 +252,89 @@ function AdminDashboard() {
                 />
 
               </BarChart>
+
             </ResponsiveContainer>
+
           </div>
+
         </article>
 
-        {/* GRÁFICO 2: CIRCULAR */}
+        {/* GRÁFICO CIRCULAR */}
 
         <article className="admin-chart-card">
+
           <h3>Estado de los servicios</h3>
-          <p>Distribución según su estado actual.</p>
-
-          <div className="admin-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-
-                <Pie
-                  data={estadosServicios}
-                  dataKey="cantidad"
-                  nameKey="estado"
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={4}
-                >
-                  {estadosServicios.map((estado, index) => (
-                    <Cell
-                      key={estado.estado}
-                      fill={colores[index]}
-                    />
-                  ))}
-                </Pie>
-
-                <Tooltip />
-                <Legend />
-
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        {/* GRÁFICO 3: LÍNEAS */}
-
-        <article className="admin-chart-card admin-chart-full">
-          <h3>Evolución semanal de servicios</h3>
 
           <p>
-            Cantidad de solicitudes recibidas por día.
+            Distribución según su estado actual.
           </p>
 
           <div className="admin-chart">
-            <ResponsiveContainer width="100%" height="100%">
+
+            {servicios.length === 0 ? (
+
+              <p className="panel-vacio">
+                Todavía no hay servicios registrados.
+              </p>
+
+            ) : (
+
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
+
+                <PieChart>
+
+                  <Pie
+                    data={estadosServicios}
+                    dataKey="cantidad"
+                    nameKey="estado"
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={4}
+                  >
+
+                    {estadosServicios.map((estado) => (
+                      <Cell
+                        key={estado.estado}
+                        fill={estado.color}
+                      />
+                    ))}
+
+                  </Pie>
+
+                  <Tooltip />
+                  <Legend />
+
+                </PieChart>
+
+              </ResponsiveContainer>
+
+            )}
+
+          </div>
+
+        </article>
+
+        {/* GRÁFICO DE LÍNEAS */}
+
+        <article className="admin-chart-card admin-chart-full">
+
+          <h3>Servicios de los últimos 7 días</h3>
+
+          <p>
+            Cantidad de servicios según su fecha programada.
+          </p>
+
+          <div className="admin-chart">
+
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+            >
 
               <LineChart
                 data={serviciosPorDia}
@@ -242,7 +365,7 @@ function AdminDashboard() {
                 <Line
                   type="monotone"
                   dataKey="cantidad"
-                  name="Solicitudes recibidas"
+                  name="Servicios programados"
                   stroke="#0057FF"
                   strokeWidth={3}
                   dot={{
@@ -259,10 +382,13 @@ function AdminDashboard() {
               </LineChart>
 
             </ResponsiveContainer>
+
           </div>
+
         </article>
 
       </div>
+
     </section>
   );
 }

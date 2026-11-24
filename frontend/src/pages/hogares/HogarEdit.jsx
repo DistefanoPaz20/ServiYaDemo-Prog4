@@ -1,6 +1,10 @@
-
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useLocation
+} from "react-router-dom";
+
 import { Save, ArrowLeft } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -9,14 +13,27 @@ import Button from "../../components/ui/Button";
 
 import useHogaresStore from "../../store/hogaresStore";
 import useClientesStore from "../../store/clientesStore";
+import useServiciosStore from "../../store/serviciosStore";
 
 function HogarEdit() {
+
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const rol = location.pathname.split("/")[1];
+  const esCliente = rol === "cliente";
+  const clienteId = 1;
+
+  const rutaBase = `/${rol}/hogares`;
 
   const clientes = useClientesStore(
     (state) => state.clientes
+  );
+
+  const servicios = useServiciosStore(
+    (state) => state.servicios
   );
 
   const hogar = useHogaresStore((state) =>
@@ -61,34 +78,87 @@ function HogarEdit() {
   function manejarSubmit(e) {
     e.preventDefault();
 
-    const clienteExiste = clientes.some(
+    if (
+      !hogar ||
+      (
+        esCliente &&
+        String(hogar.clienteId) !== String(clienteId)
+      )
+    ) {
+      return;
+    }
+
+    const propietarioId = esCliente
+      ? hogar.clienteId
+      : formulario.clienteId;
+
+    const propietario = clientes.find(
       (cliente) =>
-        String(cliente.id) === String(formulario.clienteId)
+        String(cliente.id) === String(propietarioId)
     );
 
-    if (!clienteExiste) {
+    if (!propietario) {
       alert("Seleccioná un cliente válido.");
       return;
     }
 
-    editarHogar(id, formulario);
+    if (
+      !formulario.direccion.trim() ||
+      !formulario.localidad.trim() ||
+      !opcionesTipos.some(
+        (tipo) => tipo.valor === formulario.tipo
+      )
+    ) {
+      alert("Completá correctamente todos los campos obligatorios.");
+      return;
+    }
 
-    navigate("/admin/hogares");
+    const cambioPropietario =
+      String(propietario.id) !== String(hogar.clienteId);
+
+    const tieneServicios = servicios.some(
+      (servicio) =>
+        String(servicio.hogarId) === String(id)
+    );
+
+    if (cambioPropietario && tieneServicios) {
+      alert(
+        "No podés cambiar el propietario de un hogar con servicios asociados."
+      );
+      return;
+    }
+
+    editarHogar(id, {
+      ...formulario,
+      clienteId: propietario.id,
+      direccion: formulario.direccion.trim(),
+      localidad: formulario.localidad.trim(),
+      descripcion: formulario.descripcion.trim()
+    });
+
+    navigate(rutaBase);
   }
 
-  if (!hogar) {
+  if (
+    !hogar ||
+    (
+      esCliente &&
+      String(hogar.clienteId) !== String(clienteId)
+    )
+  ) {
     return (
       <section className="crud-page">
 
         <PageHeader
-          titulo="Hogar no encontrado"
-          descripcion="La propiedad solicitada no existe."
+          titulo="Hogar no disponible"
+          descripcion="La propiedad no existe o no tenés acceso a ella."
         />
 
         <Button
+          tipo="button"
           variante="secondary"
           icono={ArrowLeft}
-          onClick={() => navigate("/admin/hogares")}
+          onClick={() => navigate(rutaBase)}
         >
           Volver al listado
         </Button>
@@ -112,15 +182,17 @@ function HogarEdit() {
 
         <div className="crud-form-grid">
 
-          <FormField
-            label="Propietario"
-            nombre="clienteId"
-            tipo="select"
-            valor={formulario.clienteId}
-            opciones={opcionesClientes}
-            onChange={manejarCambio}
-            requerido
-          />
+          {!esCliente && (
+            <FormField
+              label="Propietario"
+              nombre="clienteId"
+              tipo="select"
+              valor={formulario.clienteId}
+              opciones={opcionesClientes}
+              onChange={manejarCambio}
+              requerido
+            />
+          )}
 
           <FormField
             label="Tipo de hogar"
@@ -165,9 +237,10 @@ function HogarEdit() {
         <div className="crud-form-actions">
 
           <Button
+            tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/hogares")}
+            onClick={() => navigate(rutaBase)}
           >
             Cancelar
           </Button>

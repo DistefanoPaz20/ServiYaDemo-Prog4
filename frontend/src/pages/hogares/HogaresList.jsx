@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -14,6 +13,13 @@ function HogaresList() {
   const [busqueda, setBusqueda] = useState("");
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const rol = location.pathname.split("/")[1];
+  const esCliente = rol === "cliente";
+  const clienteId = 1;
+
+  const rutaBase = `/${rol}/hogares`;
 
   const hogares = useHogaresStore(
     (state) => state.hogares
@@ -22,9 +28,10 @@ function HogaresList() {
   const clientes = useClientesStore(
     (state) => state.clientes
   );
-  const servicios=useServiciosStore(
-    (state)=> state.servicios
-  )
+
+  const servicios = useServiciosStore(
+    (state) => state.servicios
+  );
 
   const eliminarHogar = useHogaresStore(
     (state) => state.eliminarHogar
@@ -66,53 +73,76 @@ function HogaresList() {
     }
   ];
 
-  const hogaresFiltrados = hogares.filter((hogar) => {
-    const texto = `
-      ${obtenerPropietario(hogar.clienteId)}
-      ${hogar.direccion}
-      ${hogar.localidad}
-      ${hogar.tipo}
-    `.toLowerCase();
+  const hogaresDisponibles = esCliente
+    ? hogares.filter(
+        (hogar) =>
+          String(hogar.clienteId) === String(clienteId)
+      )
+    : hogares;
 
-    return texto.includes(
-      busqueda.trim().toLowerCase()
-    );
-  });
+  const hogaresFiltrados = hogaresDisponibles.filter(
+    (hogar) => {
+      const texto = `
+        ${obtenerPropietario(hogar.clienteId)}
+        ${hogar.direccion}
+        ${hogar.localidad}
+        ${hogar.tipo}
+      `.toLowerCase();
+
+      return texto.includes(
+        busqueda.trim().toLowerCase()
+      );
+    }
+  );
 
   function manejarEditar(id) {
-    navigate(`/admin/hogares/editar/${id}`);
+    navigate(`${rutaBase}/editar/${id}`);
   }
 
-function manejarEliminar(id) {
-  const tieneServicios = servicios.some(
-    (servicio) =>
-      String(servicio.hogarId) === String(id)
-  );
+  function manejarEliminar(id) {
 
-  if (tieneServicios) {
-    alert(
-      "No podés eliminar este hogar porque tiene servicios asociados."
+    const hogarAutorizado = hogaresDisponibles.some(
+      (hogar) => String(hogar.id) === String(id)
     );
-    return;
-  }
 
-  const confirmado = window.confirm(
-    "¿Estás seguro de que querés eliminar este hogar?"
-  );
+    if (!hogarAutorizado) {
+      alert("No podés eliminar este hogar.");
+      return;
+    }
 
-  if (confirmado) {
-    eliminarHogar(id);
+    const tieneServicios = servicios.some(
+      (servicio) =>
+        String(servicio.hogarId) === String(id)
+    );
+
+    if (tieneServicios) {
+      alert(
+        "No podés eliminar este hogar porque tiene servicios asociados."
+      );
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Estás seguro de que querés eliminar este hogar?"
+    );
+
+    if (confirmado) {
+      eliminarHogar(id);
+    }
   }
-}
 
   return (
     <section className="crud-page">
 
       <PageHeader
-        titulo="Hogares"
-        descripcion="Administrá las propiedades registradas en ServiYa."
+        titulo={esCliente ? "Mis hogares" : "Hogares"}
+        descripcion={
+          esCliente
+            ? "Administrá tus propiedades registradas."
+            : "Administrá las propiedades registradas en ServiYa."
+        }
         textoBoton="Nuevo hogar"
-        rutaBoton="/admin/hogares/nuevo"
+        rutaBoton={`${rutaBase}/nuevo`}
       />
 
       <div className="crud-toolbar">
@@ -138,7 +168,13 @@ function manejarEliminar(id) {
       </div>
 
       <DataTable
-        columnas={columnas}
+        columnas={
+          esCliente
+            ? columnas.filter(
+                (columna) => columna.campo !== "clienteId"
+              )
+            : columnas
+        }
         datos={hogaresFiltrados}
         onEditar={manejarEditar}
         onEliminar={manejarEliminar}

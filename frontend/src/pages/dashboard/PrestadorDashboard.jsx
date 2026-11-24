@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+
 import {
   ClipboardList,
   Wrench,
@@ -9,15 +10,27 @@ import {
 } from "lucide-react";
 
 import useServiciosStore from "../../store/serviciosStore";
+import usePrestadoresStore from "../../store/prestadoresStore";
 
 function PrestadorDashboard() {
 
   // Prestador provisional hasta implementar JWT
+
   const prestadorId = 1;
 
   const servicios = useServiciosStore(
     (state) => state.servicios
   );
+
+  const prestadores = usePrestadoresStore(
+    (state) => state.prestadores
+  );
+
+  const prestador = prestadores.find(
+    (p) => String(p.id) === String(prestadorId)
+  );
+
+  // SERVICIOS DEL PRESTADOR
 
   const misServicios = servicios.filter(
     (servicio) =>
@@ -36,8 +49,20 @@ function PrestadorDashboard() {
     (servicio) => servicio.estado === "Finalizado"
   );
 
+  // IMPORTE DE TRABAJOS FINALIZADOS
+
   const ingresos = trabajosFinalizados.reduce(
-    (total, servicio) => total + Number(servicio.precio),
+    (total, servicio) => {
+
+      const precio = Number(servicio.precio);
+
+      return total + (
+        Number.isFinite(precio) && precio >= 0
+          ? precio
+          : 0
+      );
+
+    },
     0
   );
 
@@ -48,6 +73,8 @@ function PrestadorDashboard() {
       currency: "ARS"
     }
   );
+
+  // ESTADÍSTICAS
 
   const estadisticas = [
     {
@@ -66,7 +93,7 @@ function PrestadorDashboard() {
       icono: CircleCheck
     },
     {
-      titulo: "Ingresos por servicios",
+      titulo: "Importe de trabajos finalizados",
       valor: ingresosFormateados,
       icono: Wallet
     }
@@ -76,15 +103,24 @@ function PrestadorDashboard() {
     <section className="prestador-dashboard">
 
       <div className="panel-bienvenida">
-        <h2>¡Bienvenido a tu panel profesional!</h2>
+
+        <h2>
+          ¡Bienvenido, {prestador?.nombre ?? "profesional"}!
+        </h2>
+
         <p>
           Gestioná tus solicitudes, trabajos y presupuestos
           desde un solo lugar.
         </p>
+
       </div>
 
+      {/* ESTADÍSTICAS */}
+
       <div className="panel-estadisticas">
+
         {estadisticas.map((estadistica) => {
+
           const Icono = estadistica.icono;
 
           return (
@@ -92,18 +128,54 @@ function PrestadorDashboard() {
               className="panel-stat-card"
               key={estadistica.titulo}
             >
+
               <div className="panel-stat-icon">
                 <Icono size={24} />
               </div>
 
               <p>{estadistica.titulo}</p>
+
               <h3>{estadistica.valor}</h3>
+
             </article>
           );
         })}
+
       </div>
 
+      {/* AVISO DE SOLICITUDES */}
+
+      {solicitudes.length > 0 && (
+
+        <section className="panel-seccion">
+
+          <h2>Solicitudes pendientes</h2>
+
+          <p className="panel-vacio">
+            Tenés {solicitudes.length} solicitud(es)
+            pendientes de gestionar.
+          </p>
+
+          <div className="perfil-acciones">
+
+            <Link
+              to="/prestador/solicitudes"
+              className="perfil-boton"
+            >
+              <ClipboardList size={18} />
+              Revisar solicitudes
+            </Link>
+
+          </div>
+
+        </section>
+
+      )}
+
+      {/* ACCIONES RÁPIDAS */}
+
       <section className="panel-seccion">
+
         <h2>Acciones rápidas</h2>
 
         <div className="panel-acciones">
@@ -124,36 +196,52 @@ function PrestadorDashboard() {
           </Link>
 
         </div>
+
       </section>
 
+      {/* ACTIVIDAD RECIENTE */}
+
       <section className="panel-seccion">
-        <h2>Mis trabajos recientes</h2>
+
+        <h2>Mi actividad reciente</h2>
 
         {misServicios.length === 0 ? (
+
           <p className="panel-vacio">
             Todavía no tenés trabajos asignados.
           </p>
+
         ) : (
+
           <div className="panel-servicios">
 
-            {misServicios.slice(-5).reverse().map((servicio) => (
-              <article
-                className="panel-servicio"
-                key={servicio.id}
-              >
-                <div>
-                  <h3>{servicio.descripcion}</h3>
-                  <p>{servicio.fecha}</p>
-                </div>
+            {misServicios
+              .slice(-5)
+              .reverse()
+              .map((servicio) => (
 
-                <span className="panel-estado">
-                  {servicio.estado}
-                </span>
-              </article>
-            ))}
+                <article
+                  className="panel-servicio"
+                  key={servicio.id}
+                >
+
+                  <div>
+                    <h3>{servicio.descripcion}</h3>
+                    <p>{servicio.fecha}</p>
+                  </div>
+
+                  <span className="panel-estado">
+                    {servicio.estado}
+                  </span>
+
+                </article>
+
+              ))}
 
           </div>
+
         )}
+
       </section>
 
     </section>
