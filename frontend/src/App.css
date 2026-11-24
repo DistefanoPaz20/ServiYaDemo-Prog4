@@ -1604,3 +1604,153 @@
     max-width: 100%;
   }
 }
+
+/* PANELES CLIENTE Y PRESTADOR */
+
+.cliente-dashboard,
+.prestador-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.panel-bienvenida {
+  background: linear-gradient(120deg, #0b1b3a, #0057ff);
+  color: white;
+  padding: 32px;
+  border-radius: 16px;
+}
+
+.panel-bienvenida h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.panel-bienvenida p {
+  color: #e0ebff;
+}
+
+.panel-estadisticas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.panel-stat-card {
+  background: white;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.panel-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: #eaf1ff;
+  color: #0057ff;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-stat-card p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.panel-stat-card h3 {
+  color: #0b1b3a;
+  font-size: 30px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.panel-seccion {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.panel-seccion h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0b1b3a;
+  margin-bottom: 20px;
+}
+
+.panel-acciones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.panel-acciones a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  color: #0057ff;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.panel-acciones a:hover {
+  background: #eaf1ff;
+}
+
+.panel-servicio {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.panel-servicio:last-child {
+  border-bottom: none;
+}
+
+.panel-servicio h3 {
+  font-weight: 600;
+  color: #0b1b3a;
+}
+
+.panel-servicio p,
+.panel-vacio {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.panel-estado {
+  background: #eaf1ff;
+  color: #0057ff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .panel-estadisticas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .panel-estadisticas,
+  .panel-acciones {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-bienvenida {
+    padding: 24px;
+  }
+} 

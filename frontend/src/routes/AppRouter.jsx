@@ -28,7 +28,8 @@ import PrestadorEdit from "../pages/prestadores/PrestadorEdit";
 import ServiciosList from "../pages/servicios/ServiciosList";
 import ServicioCreate from "../pages/servicios/ServicioCreate";
 import ServicioEdit from "../pages/servicios/ServicioEdit";
-
+import ClienteDashboard from "../pages/dashboard/ClienteDashboard";
+import PrestadorDashboard from "../pages/dashboard/PrestadorDashboard";
 function AppRouter() {
   return (
 
@@ -65,6 +66,9 @@ function AppRouter() {
       <Route path="/admin/servicios" element={<ServiciosList/>}/>
       <Route path="/admin/servicios/nuevo" element={<ServicioCreate/>}/>
       <Route path="/admin/servicios/editar/:id" element={<ServicioEdit/>}/>
+      <Route path="/cliente" element={<ClienteDashboard/>}/>
+      <Route path="/prestador" element={<PrestadorDashboard/>}/>
+
 
 
 

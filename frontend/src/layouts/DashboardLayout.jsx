@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
@@ -10,11 +9,17 @@ import {
 
 import Sidebar from "../components/common/Sidebar";
 
+const titulos = {
+  admin: "Panel de administración",
+  cliente: "Panel del cliente",
+  prestador: "Panel del prestador"
+};
+
 function DashboardLayout() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const location = useLocation();
 
-  const esAdmin = location.pathname.startsWith("/admin");
+  const rol = location.pathname.split("/")[1];
 
   return (
     <div className="dashboard-layout">
@@ -24,7 +29,10 @@ function DashboardLayout() {
           menuAbierto ? "abierto" : ""
         }`}
       >
-        <Sidebar cerrarMenu={() => setMenuAbierto(false)} />
+        <Sidebar
+          rol={rol}
+          cerrarMenu={() => setMenuAbierto(false)}
+        />
       </div>
 
       {menuAbierto && (
@@ -40,6 +48,7 @@ function DashboardLayout() {
 
         <header className="dashboard-topbar">
           <div className="dashboard-topbar-left">
+
             <button
               type="button"
               className="dashboard-menu-button"
@@ -50,17 +59,23 @@ function DashboardLayout() {
             </button>
 
             <h1>
-              {esAdmin ? "Panel de administración" : "Panel de usuario"}
+              {titulos[rol] ?? "Panel de usuario"}
             </h1>
+
           </div>
 
           <div className="dashboard-topbar-right">
+
             <Link to="/" className="dashboard-home-link">
               <ArrowLeft size={18} />
               <span>Ir al inicio</span>
             </Link>
 
-            <CircleUserRound size={30} className="dashboard-user-icon" />
+            <CircleUserRound
+              size={30}
+              className="dashboard-user-icon"
+            />
+
           </div>
         </header>
 

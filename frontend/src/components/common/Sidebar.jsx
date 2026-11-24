@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -6,12 +5,15 @@ import {
   House,
   Wrench,
   BriefcaseBusiness,
-  ClipboardList
+  ClipboardList,
+  UserRound,
+  FileText,
+  Search
 } from "lucide-react";
 
 import logoServiYa from "../../assets/images/LogoServiYa.png";
 
-const opciones = [
+const opcionesAdmin = [
   {
     nombre: "Dashboard",
     ruta: "/admin",
@@ -44,7 +46,77 @@ const opciones = [
   }
 ];
 
-function Sidebar({ cerrarMenu }) {
+const opcionesCliente = [
+  {
+    nombre: "Dashboard",
+    ruta: "/cliente",
+    icono: LayoutDashboard
+  },
+  {
+    nombre: "Mis hogares",
+    ruta: "/cliente/hogares",
+    icono: House
+  },
+  {
+    nombre: "Buscar profesionales",
+    ruta: "/cliente/profesionales",
+    icono: Search
+  },
+  {
+    nombre: "Mis servicios",
+    ruta: "/cliente/servicios",
+    icono: ClipboardList
+  },
+  {
+    nombre: "Mis presupuestos",
+    ruta: "/cliente/presupuestos",
+    icono: FileText
+  },
+  {
+    nombre: "Mi perfil",
+    ruta: "/cliente/perfil",
+    icono: UserRound
+  }
+];
+
+const opcionesPrestador = [
+  {
+    nombre: "Dashboard",
+    ruta: "/prestador",
+    icono: LayoutDashboard
+  },
+  {
+    nombre: "Solicitudes",
+    ruta: "/prestador/solicitudes",
+    icono: ClipboardList
+  },
+  {
+    nombre: "Mis presupuestos",
+    ruta: "/prestador/presupuestos",
+    icono: FileText
+  },
+  {
+    nombre: "Mis trabajos",
+    ruta: "/prestador/trabajos",
+    icono: Wrench
+  },
+  {
+    nombre: "Mi perfil",
+    ruta: "/prestador/perfil",
+    icono: UserRound
+  }
+];
+
+const menus = {
+  admin: opcionesAdmin,
+  cliente: opcionesCliente,
+  prestador: opcionesPrestador
+};
+
+function Sidebar({ cerrarMenu, rol = "admin" }) {
+
+  const opciones = menus[rol] ?? [];
+
   return (
     <aside className="dashboard-sidebar">
 
@@ -52,7 +124,10 @@ function Sidebar({ cerrarMenu }) {
         <img src={logoServiYa} alt="ServiYa" />
       </div>
 
-      <nav className="sidebar-nav" aria-label="Menú del administrador">
+      <nav
+        className="sidebar-nav"
+        aria-label={`Menú de ${rol}`}
+      >
         {opciones.map((opcion) => {
           const Icono = opcion.icono;
 
@@ -60,7 +135,7 @@ function Sidebar({ cerrarMenu }) {
             <NavLink
               key={opcion.ruta}
               to={opcion.ruta}
-              end={opcion.ruta === "/admin"}
+              end={opcion.ruta === `/${rol}`}
               onClick={cerrarMenu}
               className={({ isActive }) =>
                 `sidebar-link ${isActive ? "activo" : ""}`
