@@ -13,6 +13,7 @@ import Login from "../pages/auth/Login";
 import Registro from "../pages/auth/Registro";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AdminDashboard from "../pages/dashboard/AdminDashboard";
+import ClientesList from "../pages/clientes/ClientesList";
 function AppRouter() {
   return (
 
@@ -34,6 +35,7 @@ function AppRouter() {
 
     <Route element={<DashboardLayout/>}>
       <Route path="/admin" element={<AdminDashboard/>}/>
+      <Route path="/admin/clientes" element={<ClientesList/>}/>
     </Route>
   </Routes>
 </BrowserRouter>
