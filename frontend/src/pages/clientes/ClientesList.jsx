@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/ui/DataTable";
+
 import useClientesStore from "../../store/clientesStore";
 import useHogaresStore from "../../store/hogaresStore";
+import useOperacion from "../../hooks/useOperacion";
 
 const columnas = [
   { campo: "id", titulo: "ID" },
@@ -33,6 +34,8 @@ function ClientesList() {
     (state) => state.eliminarCliente
   );
 
+  const { ejecutar, procesando, error } = useOperacion();
+
   const clientesFiltrados = clientes.filter((cliente) => {
     const texto = `
       ${cliente.nombre}
@@ -45,10 +48,23 @@ function ClientesList() {
   });
 
   function manejarEditar(id) {
-    navigate(`/admin/clientes/editar/${id}`);
+    if (!procesando) {
+      navigate(`/admin/clientes/editar/${id}`);
+    }
   }
 
-  function manejarEliminar(id) {
+  async function manejarEliminar(id) {
+    if (procesando) return;
+
+    const cliente = clientes.find(
+      (c) => String(c.id) === String(id)
+    );
+
+    if (cliente?.usuarioId) {
+      alert("Este cliente tiene una cuenta de usuario asociada.");
+      return;
+    }
+
     const tieneHogares = hogares.some(
       (hogar) => String(hogar.clienteId) === String(id)
     );
@@ -65,7 +81,7 @@ function ClientesList() {
     );
 
     if (confirmado) {
-      eliminarCliente(id);
+      await ejecutar(() => eliminarCliente(id));
     }
   }
 
@@ -98,6 +114,14 @@ function ClientesList() {
         </span>
 
       </div>
+
+      {error && (
+        <p className="crud-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {procesando && <p>Procesando operación...</p>}
 
       <DataTable
         columnas={columnas}

@@ -1,7 +1,7 @@
+
 import { useState } from "react";
 import {
   useNavigate,
-  useLocation,
   useSearchParams
 } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import { Save, ArrowLeft } from "lucide-react";
 import FormField from "./FormField";
 import Button from "../ui/Button";
 
+import useAuthStore from "../../store/authStore";
 import useHogaresStore from "../../store/hogaresStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useClientesStore from "../../store/clientesStore";
@@ -21,12 +22,13 @@ function ServicioForm({
   textoBoton
 }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore((state) => state.usuario);
+
+  const rol = usuario?.rol;
   const esCliente = rol === "cliente";
-  const clienteId = 1;
+  const clienteId = usuario?.perfilId;
 
   const rutaBase = `/${rol}/servicios`;
 
@@ -46,6 +48,9 @@ function ServicioForm({
     (state) => state.oficios
   );
 
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
   const [formulario, setFormulario] = useState({
     hogarId: servicioInicial?.hogarId ?? "",
     prestadorId:
@@ -53,7 +58,7 @@ function ServicioForm({
       searchParams.get("prestadorId") ??
       "",
     descripcion: servicioInicial?.descripcion ?? "",
-    fecha: servicioInicial?.fecha ?? "",
+    fecha: servicioInicial?.fecha?.slice(0, 10) ?? "",
     precio: servicioInicial?.precio ?? (esCliente ? 0 : ""),
     estado: servicioInicial?.estado ?? "Pendiente"
   });
@@ -63,7 +68,9 @@ function ServicioForm({
         (hogar) =>
           String(hogar.clienteId) === String(clienteId)
       )
-    : hogares;
+    : rol === "admin"
+      ? hogares
+      : [];
 
   const opcionesHogares = hogaresDisponibles.map((hogar) => {
     const cliente = clientes.find(
@@ -121,8 +128,17 @@ function ServicioForm({
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
+
+    if (guardando) return;
+
+    setError("");
+
+    if (rol !== "admin" && rol !== "cliente") {
+      setError("No tenés permiso para realizar esta operación.");
+      return;
+    }
 
     const hogar = hogaresDisponibles.find(
       (hogar) =>
@@ -136,7 +152,7 @@ function ServicioForm({
     );
 
     if (!hogar || !prestador) {
-      alert("Seleccioná un hogar y un prestador válidos.");
+      setError("Seleccioná un hogar y un prestador válidos.");
       return;
     }
 
@@ -147,19 +163,20 @@ function ServicioForm({
     if (
       (!esCliente && String(formulario.precio).trim() === "") ||
       !Number.isFinite(precio) ||
-      precio < 0
+      precio < 0 ||
+      precio > 9999999999.99
     ) {
-      alert("Ingresá un precio válido.");
+      setError("Ingresá un precio válido.");
       return;
     }
 
     if (!formulario.descripcion.trim()) {
-      alert("Ingresá una descripción del servicio.");
+      setError("Ingresá una descripción del servicio.");
       return;
     }
 
     if (!formulario.fecha) {
-      alert("Seleccioná una fecha.");
+      setError("Seleccioná una fecha.");
       return;
     }
 
@@ -168,18 +185,34 @@ function ServicioForm({
       : formulario.estado;
 
     if (!opcionesEstados.some((e) => e.valor === estado)) {
-      alert("Seleccioná un estado válido.");
+      setError("Seleccioná un estado válido.");
       return;
     }
 
-    onGuardar({
-      ...formulario,
-      hogarId: hogar.id,
-      prestadorId: prestador.valor,
-      descripcion: formulario.descripcion.trim(),
-      precio,
-      estado
-    });
+    setGuardando(true);
+
+    try {
+
+      await onGuardar({
+        hogarId: hogar.id,
+        prestadorId: prestador.valor,
+        descripcion: formulario.descripcion.trim(),
+        fecha: formulario.fecha,
+        precio,
+        estado
+      });
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo guardar el servicio."
+      );
+
+    } finally {
+
+      setGuardando(false);
+
+    }
   }
 
   return (
@@ -271,6 +304,12 @@ function ServicioForm({
         </p>
       )}
 
+      {error && (
+        <p className="login-message" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="crud-form-actions">
 
         <Button
@@ -285,8 +324,13 @@ function ServicioForm({
         <Button
           tipo="submit"
           icono={Save}
+          disabled={
+            guardando ||
+            hogaresDisponibles.length === 0 ||
+            opcionesPrestadores.length === 0
+          }
         >
-          {textoBoton}
+          {guardando ? "Guardando..." : textoBoton}
         </Button>
 
       </div>

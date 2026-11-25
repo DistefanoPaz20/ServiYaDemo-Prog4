@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
@@ -6,7 +5,9 @@ import { Save, ArrowLeft } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import FormField from "../../components/forms/FormField";
 import Button from "../../components/ui/Button";
+
 import useClientesStore from "../../store/clientesStore";
+import useOperacion from "../../hooks/useOperacion";
 
 function ClienteCreate() {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ function ClienteCreate() {
   const agregarCliente = useClientesStore(
     (state) => state.agregarCliente
   );
+
+  const { ejecutar, procesando, error } = useOperacion();
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -31,12 +34,16 @@ function ClienteCreate() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
-    agregarCliente(formulario);
+    const correcto = await ejecutar(() =>
+      agregarCliente(formulario)
+    );
 
-    navigate("/admin/clientes");
+    if (correcto) {
+      navigate("/admin/clientes");
+    }
   }
 
   return (
@@ -47,10 +54,7 @@ function ClienteCreate() {
         descripcion="Registrá un nuevo cliente en ServiYa."
       />
 
-      <form
-        className="crud-form"
-        onSubmit={manejarSubmit}
-      >
+      <form className="crud-form" onSubmit={manejarSubmit}>
 
         <div className="crud-form-grid">
 
@@ -59,7 +63,6 @@ function ClienteCreate() {
             nombre="nombre"
             valor={formulario.nombre}
             onChange={manejarCambio}
-            placeholder="Ingresá el nombre"
             requerido
           />
 
@@ -68,7 +71,6 @@ function ClienteCreate() {
             nombre="apellido"
             valor={formulario.apellido}
             onChange={manejarCambio}
-            placeholder="Ingresá el apellido"
             requerido
           />
 
@@ -78,7 +80,6 @@ function ClienteCreate() {
             tipo="email"
             valor={formulario.email}
             onChange={manejarCambio}
-            placeholder="cliente@ejemplo.com"
             requerido
           />
 
@@ -88,27 +89,32 @@ function ClienteCreate() {
             tipo="tel"
             valor={formulario.telefono}
             onChange={manejarCambio}
-            placeholder="381..."
             requerido
           />
 
         </div>
 
+        {error && (
+          <p className="crud-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
+            tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/clientes")}
+            onClick={() => {
+              if (!procesando) navigate("/admin/clientes");
+            }}
           >
             Cancelar
           </Button>
 
-          <Button
-            tipo="submit"
-            icono={Save}
-          >
-            Guardar cliente
+          <Button tipo="submit" icono={Save}>
+            {procesando ? "Guardando..." : "Guardar cliente"}
           </Button>
 
         </div>

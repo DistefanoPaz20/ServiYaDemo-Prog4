@@ -1,8 +1,8 @@
+
 import { useState } from "react";
 import {
   useNavigate,
-  useParams,
-  useLocation
+  useParams
 } from "react-router-dom";
 
 import { Save, ArrowLeft } from "lucide-react";
@@ -11,6 +11,7 @@ import PageHeader from "../../components/common/PageHeader";
 import FormField from "../../components/forms/FormField";
 import Button from "../../components/ui/Button";
 
+import useAuthStore from "../../store/authStore";
 import useHogaresStore from "../../store/hogaresStore";
 import useClientesStore from "../../store/clientesStore";
 import useServiciosStore from "../../store/serviciosStore";
@@ -20,13 +21,74 @@ function HogarEdit() {
   const { id } = useParams();
 
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
   const esCliente = rol === "cliente";
-  const clienteId = 1;
+  const clienteId = usuario?.perfilId;
 
   const rutaBase = `/${rol}/hogares`;
+
+  const hogar = useHogaresStore((state) =>
+    state.hogares.find(
+      (hogar) => String(hogar.id) === String(id)
+    )
+  );
+
+  const autorizado =
+    hogar &&
+    (
+      rol === "admin" ||
+      (
+        esCliente &&
+        String(hogar.clienteId) === String(clienteId)
+      )
+    );
+
+  if (!autorizado) {
+    return (
+      <section className="crud-page">
+
+        <PageHeader
+          titulo="Hogar no disponible"
+          descripcion="La propiedad no existe o no tenés acceso a ella."
+        />
+
+        <Button
+          tipo="button"
+          variante="secondary"
+          icono={ArrowLeft}
+          onClick={() => navigate(rutaBase)}
+        >
+          Volver al listado
+        </Button>
+
+      </section>
+    );
+  }
+
+  return (
+    <FormularioHogar
+      key={`${rol}-${clienteId}-${hogar.id}`}
+      hogar={hogar}
+      esCliente={esCliente}
+      clienteId={clienteId}
+      rutaBase={rutaBase}
+    />
+  );
+}
+
+function FormularioHogar({
+  hogar,
+  esCliente,
+  clienteId,
+  rutaBase
+}) {
+
+  const navigate = useNavigate();
 
   const clientes = useClientesStore(
     (state) => state.clientes
@@ -36,22 +98,19 @@ function HogarEdit() {
     (state) => state.servicios
   );
 
-  const hogar = useHogaresStore((state) =>
-    state.hogares.find(
-      (hogar) => String(hogar.id) === String(id)
-    )
-  );
-
   const editarHogar = useHogaresStore(
     (state) => state.editarHogar
   );
 
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
   const [formulario, setFormulario] = useState({
-    clienteId: hogar?.clienteId ?? "",
-    direccion: hogar?.direccion ?? "",
-    localidad: hogar?.localidad ?? "",
-    tipo: hogar?.tipo ?? "",
-    descripcion: hogar?.descripcion ?? ""
+    clienteId: hogar.clienteId,
+    direccion: hogar.direccion ?? "",
+    localidad: hogar.localidad ?? "",
+    tipo: hogar.tipo ?? "",
+    descripcion: hogar.descripcion ?? ""
   });
 
   const opcionesClientes = clientes.map((cliente) => ({
@@ -75,30 +134,41 @@ function HogarEdit() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
+    if (guardando) return;
+
+    setError("");
+
     if (
-      !hogar ||
-      (
-        esCliente &&
-        String(hogar.clienteId) !== String(clienteId)
-      )
+      esCliente &&
+      String(hogar.clienteId) !== String(clienteId)
     ) {
+      setError("No tenés acceso a este hogar.");
       return;
     }
 
-    const propietarioId = esCliente
-      ? hogar.clienteId
-      : formulario.clienteId;
-
-    const propietario = clientes.find(
-      (cliente) =>
-        String(cliente.id) === String(propietarioId)
+    const propietarioId = Number(
+      esCliente ? clienteId : formulario.clienteId
     );
 
-    if (!propietario) {
-      alert("Seleccioná un cliente válido.");
+    if (
+      !Number.isSafeInteger(propietarioId) ||
+      propietarioId <= 0
+    ) {
+      setError("Seleccioná un cliente válido.");
+      return;
+    }
+
+    if (
+      !esCliente &&
+      !clientes.some(
+        (cliente) =>
+          String(cliente.id) === String(propietarioId)
+      )
+    ) {
+      setError("Seleccioná un cliente válido.");
       return;
     }
 
@@ -109,62 +179,52 @@ function HogarEdit() {
         (tipo) => tipo.valor === formulario.tipo
       )
     ) {
-      alert("Completá correctamente todos los campos obligatorios.");
+      setError(
+        "Completá correctamente todos los campos obligatorios."
+      );
       return;
     }
 
     const cambioPropietario =
-      String(propietario.id) !== String(hogar.clienteId);
+      String(propietarioId) !== String(hogar.clienteId);
 
     const tieneServicios = servicios.some(
       (servicio) =>
-        String(servicio.hogarId) === String(id)
+        String(servicio.hogarId) === String(hogar.id)
     );
 
     if (cambioPropietario && tieneServicios) {
-      alert(
+      setError(
         "No podés cambiar el propietario de un hogar con servicios asociados."
       );
       return;
     }
 
-    editarHogar(id, {
-      ...formulario,
-      clienteId: propietario.id,
-      direccion: formulario.direccion.trim(),
-      localidad: formulario.localidad.trim(),
-      descripcion: formulario.descripcion.trim()
-    });
+    setGuardando(true);
 
-    navigate(rutaBase);
-  }
+    try {
 
-  if (
-    !hogar ||
-    (
-      esCliente &&
-      String(hogar.clienteId) !== String(clienteId)
-    )
-  ) {
-    return (
-      <section className="crud-page">
+      await editarHogar(hogar.id, {
+        clienteId: propietarioId,
+        direccion: formulario.direccion.trim(),
+        localidad: formulario.localidad.trim(),
+        tipo: formulario.tipo,
+        descripcion: formulario.descripcion.trim()
+      });
 
-        <PageHeader
-          titulo="Hogar no disponible"
-          descripcion="La propiedad no existe o no tenés acceso a ella."
-        />
+      navigate(rutaBase);
 
-        <Button
-          tipo="button"
-          variante="secondary"
-          icono={ArrowLeft}
-          onClick={() => navigate(rutaBase)}
-        >
-          Volver al listado
-        </Button>
+    } catch (error) {
 
-      </section>
-    );
+      setError(
+        error.message || "No se pudo actualizar el hogar."
+      );
+
+    } finally {
+
+      setGuardando(false);
+
+    }
   }
 
   return (
@@ -234,6 +294,12 @@ function HogarEdit() {
 
         </div>
 
+        {error && (
+          <p className="login-message" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
@@ -248,8 +314,11 @@ function HogarEdit() {
           <Button
             tipo="submit"
             icono={Save}
+            disabled={guardando}
           >
-            Guardar cambios
+            {guardando
+              ? "Guardando..."
+              : "Guardar cambios"}
           </Button>
 
         </div>

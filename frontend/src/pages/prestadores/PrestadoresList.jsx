@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
@@ -9,6 +8,7 @@ import DataTable from "../../components/ui/DataTable";
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useOficiosStore from "../../store/crearOficiosStore";
 import useServiciosStore from "../../store/serviciosStore";
+import useOperacion from "../../hooks/useOperacion";
 
 function PrestadoresList() {
   const [busqueda, setBusqueda] = useState("");
@@ -26,19 +26,19 @@ function PrestadoresList() {
   const eliminarPrestador = usePrestadoresStore(
     (state) => state.eliminarPrestador
   );
-  
-  const servicios=useServiciosStore(
-    (state)=> state.servicios
-  )
+
+  const servicios = useServiciosStore(
+    (state) => state.servicios
+  );
+
+  const { ejecutar, procesando, error } = useOperacion();
 
   function obtenerOficio(oficioId) {
     const oficio = oficios.find(
-      (oficio) => String(oficio.id) === String(oficioId)
+      (o) => String(o.id) === String(oficioId)
     );
 
-    return oficio
-      ? oficio.nombre
-      : "Oficio no encontrado";
+    return oficio?.nombre ?? "Oficio no encontrado";
   }
 
   const columnas = [
@@ -73,30 +73,43 @@ function PrestadoresList() {
     });
 
   function manejarEditar(id) {
-    navigate(`/admin/prestadores/editar/${id}`);
+    if (!procesando) {
+      navigate(`/admin/prestadores/editar/${id}`);
+    }
   }
 
-function manejarEliminar(id) {
-  const tieneServicios = servicios.some(
-    (servicio) =>
-      String(servicio.prestadorId) === String(id)
-  );
+  async function manejarEliminar(id) {
+    if (procesando) return;
 
-  if (tieneServicios) {
-    alert(
-      "No podés eliminar este prestador porque tiene servicios asociados."
+    const prestador = prestadores.find(
+      (p) => String(p.id) === String(id)
     );
-    return;
-  }
 
-  const confirmado = window.confirm(
-    "¿Estás seguro de que querés eliminar este prestador?"
-  );
+    if (prestador?.usuarioId) {
+      alert("Este prestador tiene una cuenta de usuario asociada.");
+      return;
+    }
 
-  if (confirmado) {
-    eliminarPrestador(id);
+    const tieneServicios = servicios.some(
+      (servicio) =>
+        String(servicio.prestadorId) === String(id)
+    );
+
+    if (tieneServicios) {
+      alert(
+        "No podés eliminar este prestador porque tiene servicios asociados."
+      );
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Estás seguro de que querés eliminar este prestador?"
+    );
+
+    if (confirmado) {
+      await ejecutar(() => eliminarPrestador(id));
+    }
   }
-}
 
   return (
     <section className="crud-page">
@@ -127,6 +140,14 @@ function manejarEliminar(id) {
         </span>
 
       </div>
+
+      {error && (
+        <p className="crud-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {procesando && <p>Procesando operación...</p>}
 
       <DataTable
         columnas={columnas}

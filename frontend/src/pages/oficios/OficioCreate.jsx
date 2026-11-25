@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
@@ -6,7 +5,9 @@ import { Save, ArrowLeft } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import FormField from "../../components/forms/FormField";
 import Button from "../../components/ui/Button";
+
 import useOficiosStore from "../../store/crearOficiosStore";
+import useOperacion from "../../hooks/useOperacion";
 
 function OficioCreate() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ function OficioCreate() {
   const agregarOficio = useOficiosStore(
     (state) => state.agregarOficio
   );
+
+  const { ejecutar, procesando, error } = useOperacion();
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -33,30 +36,32 @@ function OficioCreate() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
-    const nombre = formulario.nombre.trim();
-    const descripcion = formulario.descripcion.trim();
+    const correcto = await ejecutar(async () => {
+      const nombre = formulario.nombre.trim();
+      const descripcion = formulario.descripcion.trim();
 
-    if (!nombre || !descripcion) {
-      alert("Completá todos los campos.");
-      return;
+      if (!nombre || !descripcion) {
+        throw new Error("Completá todos los campos.");
+      }
+
+      const existe = oficios.some(
+        (oficio) =>
+          oficio.nombre.toLowerCase() === nombre.toLowerCase()
+      );
+
+      if (existe) {
+        throw new Error("Este oficio ya está registrado.");
+      }
+
+      await agregarOficio({ nombre, descripcion });
+    });
+
+    if (correcto) {
+      navigate("/admin/oficios");
     }
-
-    const existe = oficios.some(
-      (oficio) =>
-        oficio.nombre.toLowerCase() === nombre.toLowerCase()
-    );
-
-    if (existe) {
-      alert("Este oficio ya está registrado.");
-      return;
-    }
-
-    agregarOficio({ nombre, descripcion });
-
-    navigate("/admin/oficios");
   }
 
   return (
@@ -67,10 +72,7 @@ function OficioCreate() {
         descripcion="Registrá una nueva especialidad en ServiYa."
       />
 
-      <form
-        className="crud-form"
-        onSubmit={manejarSubmit}
-      >
+      <form className="crud-form" onSubmit={manejarSubmit}>
 
         <div className="crud-form-grid">
 
@@ -99,22 +101,27 @@ function OficioCreate() {
 
         </div>
 
+        {error && (
+          <p className="crud-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
             tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/oficios")}
+            onClick={() => {
+              if (!procesando) navigate("/admin/oficios");
+            }}
           >
             Cancelar
           </Button>
 
-          <Button
-            tipo="submit"
-            icono={Save}
-          >
-            Guardar oficio
+          <Button tipo="submit" icono={Save}>
+            {procesando ? "Guardando..." : "Guardar oficio"}
           </Button>
 
         </div>

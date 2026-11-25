@@ -1,26 +1,30 @@
-import {
-  useNavigate,
-  useLocation
-} from "react-router-dom";
+
+import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../../components/common/PageHeader";
 import ServicioForm from "../../components/forms/ServicioForm";
 
+import useAuthStore from "../../store/authStore";
 import useServiciosStore from "../../store/serviciosStore";
 
 function ServicioCreate() {
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
+  const navigate = useNavigate();
+
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
   const esCliente = rol === "cliente";
 
   const agregarServicio = useServiciosStore(
     (state) => state.agregarServicio
   );
 
-  function manejarGuardar(datos) {
-    agregarServicio(datos);
+  async function manejarGuardar(datos) {
+
+    await agregarServicio(datos);
 
     navigate(`/${rol}/servicios`);
   }

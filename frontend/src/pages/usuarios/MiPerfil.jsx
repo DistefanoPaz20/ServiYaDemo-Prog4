@@ -1,18 +1,21 @@
-import { Link, useLocation } from "react-router-dom";
+
+import { Link } from "react-router-dom";
 import {
   CircleUserRound,
   Pencil,
   LockKeyhole
 } from "lucide-react";
 
+import useAuthStore from "../../store/authStore";
 import useClientesStore from "../../store/clientesStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useOficiosStore from "../../store/crearOficiosStore";
 
 function MiPerfil() {
+  const usuario = useAuthStore((state) => state.usuario);
 
-  const location = useLocation();
-  const rol = location.pathname.split("/")[1];
+  const rol = usuario?.rol;
+  const perfilId = usuario?.perfilId;
 
   const clientes = useClientesStore(
     (state) => state.clientes
@@ -26,16 +29,15 @@ function MiPerfil() {
     (state) => state.oficios
   );
 
-  // ID provisional hasta conectar la autenticación
-  const perfilId = 1;
-
   const perfil = rol === "cliente"
     ? clientes.find(
         (cliente) => String(cliente.id) === String(perfilId)
       )
-    : prestadores.find(
-        (prestador) => String(prestador.id) === String(perfilId)
-      );
+    : rol === "prestador"
+      ? prestadores.find(
+          (prestador) => String(prestador.id) === String(perfilId)
+        )
+      : null;
 
   if (!perfil) {
     return (

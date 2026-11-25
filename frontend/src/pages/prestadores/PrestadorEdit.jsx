@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
@@ -9,6 +8,7 @@ import Button from "../../components/ui/Button";
 
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useOficiosStore from "../../store/crearOficiosStore";
+import useOperacion from "../../hooks/useOperacion";
 
 function PrestadorEdit() {
   const { id } = useParams();
@@ -21,13 +21,15 @@ function PrestadorEdit() {
 
   const prestador = usePrestadoresStore((state) =>
     state.prestadores.find(
-      (prestador) => String(prestador.id) === String(id)
+      (p) => String(p.id) === String(id)
     )
   );
 
   const editarPrestador = usePrestadoresStore(
     (state) => state.editarPrestador
   );
+
+  const { ejecutar, procesando, error } = useOperacion();
 
   const [formulario, setFormulario] = useState({
     nombre: prestador?.nombre ?? "",
@@ -58,36 +60,42 @@ function PrestadorEdit() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
-    const oficioExiste = oficios.some(
-      (oficio) =>
-        String(oficio.id) === String(formulario.oficioId)
-    );
+    const correcto = await ejecutar(async () => {
+      const oficioExiste = oficios.some(
+        (oficio) =>
+          String(oficio.id) === String(formulario.oficioId)
+      );
 
-    if (!oficioExiste) {
-      alert("Seleccioná un oficio válido.");
-      return;
-    }
+      if (!oficioExiste) {
+        throw new Error("Seleccioná un oficio válido.");
+      }
 
-    const experiencia = Number(formulario.experiencia);
+      const experiencia = Number(formulario.experiencia);
 
-    if (
-      formulario.experiencia === "" ||
-      !Number.isInteger(experiencia) ||
-      experiencia < 0
-    ) {
-      alert("Ingresá una cantidad válida de años de experiencia.");
-      return;
-    }
+      if (
+        formulario.experiencia === "" ||
+        !Number.isInteger(experiencia) ||
+        experiencia < 0 ||
+        experiencia > 100
+      ) {
+        throw new Error(
+          "Ingresá una experiencia entre 0 y 100 años."
+        );
+      }
 
-    editarPrestador(id, {
-      ...formulario,
-      experiencia
+      await editarPrestador(id, {
+        ...formulario,
+        oficioId: Number(formulario.oficioId),
+        experiencia
+      });
     });
 
-    navigate("/admin/prestadores");
+    if (correcto) {
+      navigate("/admin/prestadores");
+    }
   }
 
   if (!prestador) {
@@ -119,10 +127,7 @@ function PrestadorEdit() {
         descripcion="Modificá los datos del profesional seleccionado."
       />
 
-      <form
-        className="crud-form"
-        onSubmit={manejarSubmit}
-      >
+      <form className="crud-form" onSubmit={manejarSubmit}>
 
         <div className="crud-form-grid">
 
@@ -191,22 +196,27 @@ function PrestadorEdit() {
 
         </div>
 
+        {error && (
+          <p className="crud-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
             tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/prestadores")}
+            onClick={() => {
+              if (!procesando) navigate("/admin/prestadores");
+            }}
           >
             Cancelar
           </Button>
 
-          <Button
-            tipo="submit"
-            icono={Save}
-          >
-            Guardar cambios
+          <Button tipo="submit" icono={Save}>
+            {procesando ? "Guardando..." : "Guardar cambios"}
           </Button>
 
         </div>

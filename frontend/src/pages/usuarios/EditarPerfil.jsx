@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import {
-  useLocation,
   useNavigate,
   Link
 } from "react-router-dom";
 
+import useAuthStore from "../../store/authStore";
 import useClientesStore from "../../store/clientesStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useOficiosStore from "../../store/crearOficiosStore";
@@ -12,9 +13,12 @@ import useOficiosStore from "../../store/crearOficiosStore";
 import FormField from "../../components/forms/FormField";
 
 function EditarPerfil() {
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
 
-  const location = useLocation();
-  const rol = location.pathname.split("/")[1];
+  const rol = usuario?.rol;
+  const perfilId = usuario?.perfilId;
 
   const clientes = useClientesStore(
     (state) => state.clientes
@@ -24,15 +28,15 @@ function EditarPerfil() {
     (state) => state.prestadores
   );
 
-  const perfilId = 1;
-
   const perfil = rol === "cliente"
     ? clientes.find(
         (cliente) => String(cliente.id) === String(perfilId)
       )
-    : prestadores.find(
-        (prestador) => String(prestador.id) === String(perfilId)
-      );
+    : rol === "prestador"
+      ? prestadores.find(
+          (prestador) => String(prestador.id) === String(perfilId)
+        )
+      : null;
 
   if (!perfil) {
     return <p>No se encontró el perfil.</p>;
@@ -50,6 +54,10 @@ function EditarPerfil() {
 function FormularioPerfil({ perfil, rol }) {
 
   const navigate = useNavigate();
+
+  const actualizarUsuario = useAuthStore(
+    (state) => state.actualizarUsuario
+  );
 
   const editarCliente = useClientesStore(
     (state) => state.editarCliente
@@ -73,6 +81,7 @@ function FormularioPerfil({ perfil, rol }) {
   });
 
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   function manejarCambio(evento) {
     const { name, value } = evento.target;
@@ -83,8 +92,11 @@ function FormularioPerfil({ perfil, rol }) {
     }));
   }
 
-  function manejarSubmit(evento) {
+  async function manejarSubmit(evento) {
     evento.preventDefault();
+
+    if (guardando) return;
+
     setError("");
 
     if (
@@ -107,44 +119,69 @@ function FormularioPerfil({ perfil, rol }) {
     const datos = {
       nombre: formulario.nombre.trim(),
       apellido: formulario.apellido.trim(),
-      email: formulario.email.trim(),
+      email: formulario.email.trim().toLowerCase(),
       telefono: formulario.telefono.trim()
     };
 
-    if (rol === "cliente") {
+    setGuardando(true);
 
-      editarCliente(perfil.id, datos);
+    try {
 
-    } else {
+      if (rol === "cliente") {
 
-      const experiencia = Number(formulario.experiencia);
+        await editarCliente(perfil.id, datos);
 
-      if (
-        formulario.experiencia === "" ||
-        !Number.isInteger(experiencia) ||
-        experiencia < 0
-      ) {
-        setError("Ingresá una experiencia válida.");
-        return;
+      } else {
+
+        const experiencia = Number(formulario.experiencia);
+
+        if (
+          formulario.experiencia === "" ||
+          !Number.isInteger(experiencia) ||
+          experiencia < 0 ||
+          experiencia > 100
+        ) {
+          throw new Error(
+            "Ingresá una experiencia válida."
+          );
+        }
+
+        const oficio = oficios.find(
+          (o) => String(o.id) === String(formulario.oficioId)
+        );
+
+        if (!oficio) {
+          throw new Error(
+            "Seleccioná un oficio válido."
+          );
+        }
+
+        await editarPrestador(perfil.id, {
+          ...datos,
+          oficioId: oficio.id,
+          experiencia,
+          estado: perfil.estado
+        });
       }
 
-      const oficio = oficios.find(
-        (o) => String(o.id) === String(formulario.oficioId)
+      actualizarUsuario({
+        nombre: `${datos.nombre} ${datos.apellido}`,
+        email: datos.email
+      });
+
+      navigate(`/${rol}/perfil`);
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo actualizar el perfil."
       );
 
-      if (!oficio) {
-        setError("Seleccioná un oficio válido.");
-        return;
-      }
+    } finally {
 
-      editarPrestador(perfil.id, {
-        ...datos,
-        oficioId: oficio.id,
-        experiencia
-      });
+      setGuardando(false);
+
     }
-
-    navigate(`/${rol}/perfil`);
   }
 
   return (
@@ -239,8 +276,11 @@ function FormularioPerfil({ perfil, rol }) {
           <button
             type="submit"
             className="perfil-boton"
+            disabled={guardando}
           >
-            Guardar cambios
+            {guardando
+              ? "Guardando..."
+              : "Guardar cambios"}
           </button>
 
         </div>

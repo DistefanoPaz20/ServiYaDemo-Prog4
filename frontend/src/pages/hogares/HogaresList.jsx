@@ -1,23 +1,29 @@
+
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 
+import useAuthStore from "../../store/authStore";
 import useHogaresStore from "../../store/hogaresStore";
 import useClientesStore from "../../store/clientesStore";
 import useServiciosStore from "../../store/serviciosStore";
 
 function HogaresList() {
+
   const [busqueda, setBusqueda] = useState("");
 
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
   const esCliente = rol === "cliente";
-  const clienteId = 1;
+  const clienteId = usuario?.perfilId;
 
   const rutaBase = `/${rol}/hogares`;
 
@@ -78,7 +84,9 @@ function HogaresList() {
         (hogar) =>
           String(hogar.clienteId) === String(clienteId)
       )
-    : hogares;
+    : rol === "admin"
+      ? hogares
+      : [];
 
   const hogaresFiltrados = hogaresDisponibles.filter(
     (hogar) => {
@@ -99,7 +107,7 @@ function HogaresList() {
     navigate(`${rutaBase}/editar/${id}`);
   }
 
-  function manejarEliminar(id) {
+  async function manejarEliminar(id) {
 
     const hogarAutorizado = hogaresDisponibles.some(
       (hogar) => String(hogar.id) === String(id)
@@ -126,8 +134,18 @@ function HogaresList() {
       "¿Estás seguro de que querés eliminar este hogar?"
     );
 
-    if (confirmado) {
-      eliminarHogar(id);
+    if (!confirmado) return;
+
+    try {
+
+      await eliminarHogar(id);
+
+    } catch (error) {
+
+      alert(
+        error.message || "No se pudo eliminar el hogar."
+      );
+
     }
   }
 

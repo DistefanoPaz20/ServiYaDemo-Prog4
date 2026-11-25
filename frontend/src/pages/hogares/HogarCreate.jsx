@@ -1,22 +1,27 @@
+
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import FormField from "../../components/forms/FormField";
 import Button from "../../components/ui/Button";
 
+import useAuthStore from "../../store/authStore";
 import useHogaresStore from "../../store/hogaresStore";
 import useClientesStore from "../../store/clientesStore";
 
 function HogarCreate() {
 
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
   const esCliente = rol === "cliente";
-  const clienteId = 1;
+  const clienteId = usuario?.perfilId;
 
   const rutaBase = `/${rol}/hogares`;
 
@@ -27,6 +32,9 @@ function HogarCreate() {
   const agregarHogar = useHogaresStore(
     (state) => state.agregarHogar
   );
+
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
 
   const [formulario, setFormulario] = useState({
     clienteId: esCliente ? clienteId : "",
@@ -57,20 +65,38 @@ function HogarCreate() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
-    const propietarioId = esCliente
-      ? clienteId
-      : formulario.clienteId;
+    if (guardando) return;
 
-    const propietario = clientes.find(
-      (cliente) =>
-        String(cliente.id) === String(propietarioId)
+    setError("");
+
+    if (rol !== "cliente" && rol !== "admin") {
+      setError("No tenés permiso para registrar hogares.");
+      return;
+    }
+
+    const propietarioId = Number(
+      esCliente ? clienteId : formulario.clienteId
     );
 
-    if (!propietario) {
-      alert("Seleccioná un cliente válido.");
+    if (
+      !Number.isSafeInteger(propietarioId) ||
+      propietarioId <= 0
+    ) {
+      setError("Seleccioná un cliente válido.");
+      return;
+    }
+
+    if (
+      !esCliente &&
+      !clientes.some(
+        (cliente) =>
+          String(cliente.id) === String(propietarioId)
+      )
+    ) {
+      setError("Seleccioná un cliente válido.");
       return;
     }
 
@@ -81,19 +107,37 @@ function HogarCreate() {
         (tipo) => tipo.valor === formulario.tipo
       )
     ) {
-      alert("Completá correctamente todos los campos obligatorios.");
+      setError(
+        "Completá correctamente todos los campos obligatorios."
+      );
       return;
     }
 
-    agregarHogar({
-      ...formulario,
-      clienteId: propietario.id,
-      direccion: formulario.direccion.trim(),
-      localidad: formulario.localidad.trim(),
-      descripcion: formulario.descripcion.trim()
-    });
+    setGuardando(true);
 
-    navigate(rutaBase);
+    try {
+
+      await agregarHogar({
+        clienteId: propietarioId,
+        direccion: formulario.direccion.trim(),
+        localidad: formulario.localidad.trim(),
+        tipo: formulario.tipo,
+        descripcion: formulario.descripcion.trim()
+      });
+
+      navigate(rutaBase);
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo registrar el hogar."
+      );
+
+    } finally {
+
+      setGuardando(false);
+
+    }
   }
 
   return (
@@ -170,6 +214,12 @@ function HogarCreate() {
 
         </div>
 
+        {error && (
+          <p className="login-message" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
@@ -184,8 +234,11 @@ function HogarCreate() {
           <Button
             tipo="submit"
             icono={Save}
+            disabled={guardando}
           >
-            Guardar hogar
+            {guardando
+              ? "Guardando..."
+              : "Guardar hogar"}
           </Button>
 
         </div>

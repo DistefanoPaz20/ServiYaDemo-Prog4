@@ -1,6 +1,12 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 
+import { useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useSearchParams
+} from "react-router-dom";
+
+import useAuthStore from "../../store/authStore";
 import useServiciosStore from "../../store/serviciosStore";
 import usePresupuestosStore from "../../store/presupuestosStore";
 
@@ -9,7 +15,13 @@ import FormField from "../../components/forms/FormField";
 function PresupuestoCreate() {
 
   const navigate = useNavigate();
-  const prestadorId = 1;
+  const [searchParams] = useSearchParams();
+
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const prestadorId = usuario?.perfilId;
 
   const servicios = useServiciosStore(
     (state) => state.servicios
@@ -24,15 +36,18 @@ function PresupuestoCreate() {
   );
 
   const [formulario, setFormulario] = useState({
-    servicioId: "",
+    servicioId: searchParams.get("servicioId") ?? "",
     descripcion: "",
     monto: ""
   });
 
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   const serviciosDisponibles = servicios.filter(
     (servicio) =>
+      usuario?.rol === "prestador" &&
+      prestadorId != null &&
       String(servicio.prestadorId) === String(prestadorId) &&
       servicio.estado === "Pendiente" &&
       !presupuestos.some(
@@ -52,9 +67,12 @@ function PresupuestoCreate() {
     }));
   }
 
-  function manejarSubmit(evento) {
+  async function manejarSubmit(evento) {
 
     evento.preventDefault();
+
+    if (guardando) return;
+
     setError("");
 
     const servicio = serviciosDisponibles.find(
@@ -69,19 +87,39 @@ function PresupuestoCreate() {
       return;
     }
 
-    if (!Number.isFinite(monto) || monto <= 0) {
-      setError("Ingresá un monto válido.");
+    if (
+      !Number.isFinite(monto) ||
+      monto <= 0 ||
+      monto > 9999999999.99 ||
+      Math.abs(monto * 100 - Math.round(monto * 100)) > 0.001
+    ) {
+      setError("Ingresá un monto válido de hasta dos decimales.");
       return;
     }
 
-    agregarPresupuesto({
-      servicioId: servicio.id,
-      descripcion: formulario.descripcion.trim(),
-      monto,
-      fecha: new Date().toLocaleDateString("en-CA")
-    });
+    setGuardando(true);
 
-    navigate("/prestador/presupuestos");
+    try {
+
+      await agregarPresupuesto({
+        servicioId: servicio.id,
+        descripcion: formulario.descripcion.trim(),
+        monto
+      });
+
+      navigate("/prestador/presupuestos");
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo registrar el presupuesto."
+      );
+
+    } finally {
+
+      setGuardando(false);
+
+    }
   }
 
   return (
@@ -136,7 +174,9 @@ function PresupuestoCreate() {
         />
 
         {error && (
-          <p className="login-message">{error}</p>
+          <p className="login-message" role="alert">
+            {error}
+          </p>
         )}
 
         <div className="crud-form-actions">
@@ -148,9 +188,14 @@ function PresupuestoCreate() {
           <button
             type="submit"
             className="perfil-boton"
-            disabled={serviciosDisponibles.length === 0}
+            disabled={
+              guardando ||
+              serviciosDisponibles.length === 0
+            }
           >
-            Enviar presupuesto
+            {guardando
+              ? "Enviando..."
+              : "Enviar presupuesto"}
           </button>
 
         </div>

@@ -12,7 +12,6 @@ import {
 import useServiciosStore from "../../store/serviciosStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
 import useAuthStore from "../../store/authStore";
-import state  from "../../../../backend/src/config/db";
 
 function PrestadorDashboard() {
 

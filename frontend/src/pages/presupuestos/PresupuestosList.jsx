@@ -1,16 +1,20 @@
-import { Link, useLocation } from "react-router-dom";
+
+import { Link } from "react-router-dom";
 import { FileText, Plus } from "lucide-react";
 
+import useAuthStore from "../../store/authStore";
 import usePresupuestosStore from "../../store/presupuestosStore";
 import useServiciosStore from "../../store/serviciosStore";
 import useHogaresStore from "../../store/hogaresStore";
 
 function PresupuestosList() {
 
-  const location = useLocation();
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
 
-  const perfilId = 1;
+  const rol = usuario?.rol;
+  const perfilId = usuario?.perfilId;
 
   const presupuestos = usePresupuestosStore(
     (state) => state.presupuestos
@@ -27,6 +31,8 @@ function PresupuestosList() {
   const misPresupuestos = presupuestos.filter(
     (presupuesto) => {
 
+      if (perfilId == null) return false;
+
       const servicio = servicios.find(
         (servicio) =>
           String(servicio.id) === String(presupuesto.servicioId)
@@ -38,12 +44,20 @@ function PresupuestosList() {
         return String(servicio.prestadorId) === String(perfilId);
       }
 
-      const hogar = hogares.find(
-        (hogar) =>
-          String(hogar.id) === String(servicio.hogarId)
-      );
+      if (rol === "cliente") {
 
-      return String(hogar?.clienteId) === String(perfilId);
+        const hogar = hogares.find(
+          (hogar) =>
+            String(hogar.id) === String(servicio.hogarId)
+        );
+
+        return (
+          hogar &&
+          String(hogar.clienteId) === String(perfilId)
+        );
+      }
+
+      return false;
     }
   );
 
@@ -107,7 +121,7 @@ function PresupuestosList() {
                 <p>{presupuesto.descripcion}</p>
 
                 <span className="presupuesto-fecha">
-                  {presupuesto.fecha}
+                  {String(presupuesto.fecha ?? "").slice(0, 10)}
                 </span>
 
                 <h3 className="presupuesto-monto">

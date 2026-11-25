@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Save, ArrowLeft } from "lucide-react";
@@ -6,7 +5,9 @@ import { Save, ArrowLeft } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import FormField from "../../components/forms/FormField";
 import Button from "../../components/ui/Button";
+
 import useClientesStore from "../../store/clientesStore";
+import useOperacion from "../../hooks/useOperacion";
 
 function ClienteEdit() {
   const { id } = useParams();
@@ -15,13 +16,15 @@ function ClienteEdit() {
 
   const cliente = useClientesStore((state) =>
     state.clientes.find(
-      (cliente) => String(cliente.id) === String(id)
+      (c) => String(c.id) === String(id)
     )
   );
 
   const editarCliente = useClientesStore(
     (state) => state.editarCliente
   );
+
+  const { ejecutar, procesando, error } = useOperacion();
 
   const [formulario, setFormulario] = useState({
     nombre: cliente?.nombre ?? "",
@@ -39,12 +42,16 @@ function ClienteEdit() {
     }));
   }
 
-  function manejarSubmit(e) {
+  async function manejarSubmit(e) {
     e.preventDefault();
 
-    editarCliente(id, formulario);
+    const correcto = await ejecutar(() =>
+      editarCliente(id, formulario)
+    );
 
-    navigate("/admin/clientes");
+    if (correcto) {
+      navigate("/admin/clientes");
+    }
   }
 
   if (!cliente) {
@@ -76,10 +83,7 @@ function ClienteEdit() {
         descripcion="Modificá los datos del cliente seleccionado."
       />
 
-      <form
-        className="crud-form"
-        onSubmit={manejarSubmit}
-      >
+      <form className="crud-form" onSubmit={manejarSubmit}>
 
         <div className="crud-form-grid">
 
@@ -119,21 +123,27 @@ function ClienteEdit() {
 
         </div>
 
+        {error && (
+          <p className="crud-error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Button
+            tipo="button"
             variante="secondary"
             icono={ArrowLeft}
-            onClick={() => navigate("/admin/clientes")}
+            onClick={() => {
+              if (!procesando) navigate("/admin/clientes");
+            }}
           >
             Cancelar
           </Button>
 
-          <Button
-            tipo="submit"
-            icono={Save}
-          >
-            Guardar cambios
+          <Button tipo="submit" icono={Save}>
+            {procesando ? "Guardando..." : "Guardar cambios"}
           </Button>
 
         </div>

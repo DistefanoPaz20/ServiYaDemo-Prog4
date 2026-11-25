@@ -6,12 +6,17 @@ import PageHeader from "../../components/common/PageHeader";
 import ServicioForm from "../../components/forms/ServicioForm";
 import Button from "../../components/ui/Button";
 
+import useAuthStore from "../../store/authStore";
 import useServiciosStore from "../../store/serviciosStore";
 
 function ServicioEdit() {
-  const { id } = useParams();
 
+  const { id } = useParams();
   const navigate = useNavigate();
+
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
 
   const servicio = useServiciosStore((state) =>
     state.servicios.find(
@@ -23,27 +28,34 @@ function ServicioEdit() {
     (state) => state.editarServicio
   );
 
-  function manejarGuardar(datos) {
-    editarServicio(id, datos);
+  async function manejarGuardar(datos) {
+
+    if (usuario?.rol !== "admin") {
+      throw new Error("No tenés permiso para editar servicios.");
+    }
+
+    await editarServicio(id, datos);
 
     navigate("/admin/servicios");
   }
 
-  if (!servicio) {
+  if (!servicio || usuario?.rol !== "admin") {
     return (
       <section className="crud-page">
 
         <PageHeader
-          titulo="Servicio no encontrado"
-          descripcion="El servicio solicitado no existe."
+          titulo="Servicio no disponible"
+          descripcion="El servicio no existe o no tenés acceso."
         />
 
         <Button
           variante="secondary"
           icono={ArrowLeft}
-          onClick={() => navigate("/admin/servicios")}
+          onClick={() =>
+            navigate(`/${usuario?.rol ?? "admin"}`)
+          }
         >
-          Volver al listado
+          Volver al panel
         </Button>
 
       </section>

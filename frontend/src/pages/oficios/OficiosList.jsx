@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/ui/DataTable";
+
 import useOficiosStore from "../../store/crearOficiosStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
+import useOperacion from "../../hooks/useOperacion";
 
 const columnas = [
   { campo: "id", titulo: "ID" },
@@ -27,44 +28,50 @@ function OficiosList() {
     (state) => state.eliminarOficio
   );
 
+  const prestadores = usePrestadoresStore(
+    (state) => state.prestadores
+  );
+
+  const { ejecutar, procesando, error } = useOperacion();
+
   const oficiosFiltrados = oficios.filter((oficio) => {
     const texto = `
       ${oficio.nombre}
       ${oficio.descripcion}
     `.toLowerCase();
 
-    return texto.includes(
-      busqueda.trim().toLowerCase()
-    );
+    return texto.includes(busqueda.trim().toLowerCase());
   });
-  const prestadores=usePrestadoresStore(
-    (state)=>state.prestadores
-  )
 
   function manejarEditar(id) {
-    navigate(`/admin/oficios/editar/${id}`);
+    if (!procesando) {
+      navigate(`/admin/oficios/editar/${id}`);
+    }
   }
-function manejarEliminar(id) {
-  const tienePrestadores = prestadores.some(
-    (prestador) =>
-      String(prestador.oficioId) === String(id)
-  );
 
-  if (tienePrestadores) {
-    alert(
-      "No podés eliminar este oficio porque tiene prestadores asociados."
+  async function manejarEliminar(id) {
+    if (procesando) return;
+
+    const tienePrestadores = prestadores.some(
+      (prestador) =>
+        String(prestador.oficioId) === String(id)
     );
-    return;
-  }
 
-  const confirmado = window.confirm(
-    "¿Estás seguro de que querés eliminar este oficio?"
-  );
+    if (tienePrestadores) {
+      alert(
+        "No podés eliminar este oficio porque tiene prestadores asociados."
+      );
+      return;
+    }
 
-  if (confirmado) {
-    eliminarOficio(id);
+    const confirmado = window.confirm(
+      "¿Estás seguro de que querés eliminar este oficio?"
+    );
+
+    if (confirmado) {
+      await ejecutar(() => eliminarOficio(id));
+    }
   }
-}
 
   return (
     <section className="crud-page">
@@ -95,6 +102,14 @@ function manejarEliminar(id) {
         </span>
 
       </div>
+
+      {error && (
+        <p className="crud-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {procesando && <p>Procesando operación...</p>}
 
       <DataTable
         columnas={columnas}

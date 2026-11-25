@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   useNavigate,
@@ -16,6 +17,7 @@ import {
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/ui/DataTable";
 
+import useAuthStore from "../../store/authStore";
 import useServiciosStore from "../../store/serviciosStore";
 import useHogaresStore from "../../store/hogaresStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
@@ -34,12 +36,20 @@ const columnas = [
 ];
 
 function ServiciosList() {
+
   const [busqueda, setBusqueda] = useState("");
+  const [procesando, setProcesando] = useState(false);
+  const [error, setError] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
+  const perfilId = usuario?.perfilId;
 
   const esAdmin = rol === "admin";
   const esCliente = rol === "cliente";
@@ -48,14 +58,12 @@ function ServiciosList() {
   const esSolicitudes =
     location.pathname === "/prestador/solicitudes";
 
-  const perfilId = 1;
-
   const servicios = useServiciosStore(
     (state) => state.servicios
   );
 
-  const editarServicio = useServiciosStore(
-    (state) => state.editarServicio
+  const cambiarEstadoServicio = useServiciosStore(
+    (state) => state.cambiarEstadoServicio
   );
 
   const eliminarServicio = useServiciosStore(
@@ -82,14 +90,17 @@ function ServiciosList() {
     (state) => state.presupuestos
   );
 
-  const cambiarEstadoPresupuesto = usePresupuestosStore(
-    (state) => state.cambiarEstadoPresupuesto
+  const cargarPresupuestos = usePresupuestosStore(
+    (state) => state.cargarPresupuestos
   );
 
   const serviciosDisponibles = servicios.filter((servicio) => {
+
     if (esAdmin) {
       return true;
     }
+
+    if (perfilId == null) return false;
 
     if (esCliente) {
       return hogares.some(
@@ -100,6 +111,7 @@ function ServiciosList() {
     }
 
     if (esPrestador) {
+
       const pertenece =
         String(servicio.prestadorId) === String(perfilId);
 
@@ -115,6 +127,7 @@ function ServiciosList() {
 
   const serviciosFiltrados = serviciosDisponibles
     .map((servicio) => {
+
       const hogar = hogares.find(
         (h) => String(h.id) === String(servicio.hogarId)
       );
@@ -146,6 +159,8 @@ function ServiciosList() {
 
         oficio: oficio?.nombre ?? "No encontrado",
 
+        fecha: String(servicio.fecha ?? "").slice(0, 10),
+
         precioTexto: Number(servicio.precio).toLocaleString(
           "es-AR",
           {
@@ -156,6 +171,7 @@ function ServiciosList() {
       };
     })
     .filter((servicio) => {
+
       const texto = `
         ${servicio.cliente}
         ${servicio.hogar}
@@ -172,13 +188,17 @@ function ServiciosList() {
     });
 
   function manejarEditar(id) {
+
     if (!esAdmin) return;
 
     navigate(`/admin/servicios/editar/${id}`);
   }
 
-  function manejarEliminar(id) {
-    if (!esAdmin) return;
+  async function manejarEliminar(id) {
+
+    if (!esAdmin || procesando) return;
+
+    setError("");
 
     const tienePresupuestos = presupuestos.some(
       (presupuesto) =>
@@ -186,22 +206,41 @@ function ServiciosList() {
     );
 
     if (tienePresupuestos) {
-      alert(
+      setError(
         "No podés eliminar un servicio con presupuestos asociados."
       );
       return;
     }
 
-    const confirmado = window.confirm(
+    if (!window.confirm(
       "¿Estás seguro de que querés eliminar este servicio?"
-    );
+    )) {
+      return;
+    }
 
-    if (confirmado) {
-      eliminarServicio(id);
+    setProcesando(true);
+
+    try {
+
+      await eliminarServicio(id);
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo eliminar el servicio."
+      );
+
+    } finally {
+
+      setProcesando(false);
+
     }
   }
 
-  function finalizarServicio(id) {
+  async function finalizarServicio(id) {
+
+    if (procesando) return;
+
     const servicio = serviciosDisponibles.find(
       (s) => String(s.id) === String(id)
     );
@@ -214,14 +253,36 @@ function ServiciosList() {
       return;
     }
 
-    if (window.confirm("¿Confirmás que el trabajo fue finalizado?")) {
-      editarServicio(id, {
-        estado: "Finalizado"
-      });
+    if (!window.confirm(
+      "¿Confirmás que el trabajo fue finalizado?"
+    )) {
+      return;
+    }
+
+    setError("");
+    setProcesando(true);
+
+    try {
+
+      await cambiarEstadoServicio(id, "Finalizado");
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo finalizar el servicio."
+      );
+
+    } finally {
+
+      setProcesando(false);
+
     }
   }
 
-  function cancelarServicio(id) {
+  async function cancelarServicio(id) {
+
+    if (procesando) return;
+
     const servicio = serviciosDisponibles.find(
       (s) => String(s.id) === String(id)
     );
@@ -238,19 +299,26 @@ function ServiciosList() {
       return;
     }
 
-    presupuestos
-      .filter(
-        (p) =>
-          String(p.servicioId) === String(id) &&
-          p.estado === "Pendiente"
-      )
-      .forEach((p) => {
-        cambiarEstadoPresupuesto(p.id, "Rechazado");
-      });
+    setError("");
+    setProcesando(true);
 
-    editarServicio(id, {
-      estado: "Cancelado"
-    });
+    try {
+
+      await cambiarEstadoServicio(id, "Cancelado");
+
+      await cargarPresupuestos();
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo completar la operación."
+      );
+
+    } finally {
+
+      setProcesando(false);
+
+    }
   }
 
   const titulo = esAdmin
@@ -312,6 +380,18 @@ function ServiciosList() {
         </span>
 
       </div>
+
+      {error && (
+        <p className="login-message" role="alert">
+          {error}
+        </p>
+      )}
+
+      {procesando && (
+        <p className="panel-vacio">
+          Procesando operación...
+        </p>
+      )}
 
       {esAdmin ? (
 
@@ -399,7 +479,7 @@ function ServiciosList() {
 
                     <Link
                       className="perfil-boton"
-                      to="/prestador/presupuestos/nuevo"
+                      to={`/prestador/presupuestos/nuevo?servicioId=${servicio.id}`}
                     >
                       <FileText size={18} />
                       Crear presupuesto
@@ -427,6 +507,7 @@ function ServiciosList() {
                     <button
                       type="button"
                       className="servicio-finalizar"
+                      disabled={procesando}
                       onClick={() => finalizarServicio(servicio.id)}
                     >
                       <CircleCheck size={18} />
@@ -453,6 +534,7 @@ function ServiciosList() {
                     <button
                       type="button"
                       className="servicio-cancelar"
+                      disabled={procesando}
                       onClick={() => cancelarServicio(servicio.id)}
                     >
                       <XCircle size={18} />

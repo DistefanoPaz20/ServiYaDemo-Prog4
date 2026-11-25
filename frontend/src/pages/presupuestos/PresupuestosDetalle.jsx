@@ -1,9 +1,11 @@
+
+import { useState } from "react";
 import {
   useParams,
-  useLocation,
   Link
 } from "react-router-dom";
 
+import useAuthStore from "../../store/authStore";
 import usePresupuestosStore from "../../store/presupuestosStore";
 import useServiciosStore from "../../store/serviciosStore";
 import useHogaresStore from "../../store/hogaresStore";
@@ -11,10 +13,16 @@ import useHogaresStore from "../../store/hogaresStore";
 function PresupuestoDetalle() {
 
   const { id } = useParams();
-  const location = useLocation();
 
-  const rol = location.pathname.split("/")[1];
-  const perfilId = 1;
+  const usuario = useAuthStore(
+    (state) => state.usuario
+  );
+
+  const rol = usuario?.rol;
+  const perfilId = usuario?.perfilId;
+
+  const [procesando, setProcesando] = useState(false);
+  const [error, setError] = useState("");
 
   const presupuestos = usePresupuestosStore(
     (state) => state.presupuestos
@@ -26,10 +34,6 @@ function PresupuestoDetalle() {
 
   const servicios = useServiciosStore(
     (state) => state.servicios
-  );
-
-  const editarServicio = useServiciosStore(
-    (state) => state.editarServicio
   );
 
   const hogares = useHogaresStore(
@@ -50,9 +54,16 @@ function PresupuestoDetalle() {
       String(hogar.id) === String(servicio?.hogarId)
   );
 
-  const autorizado = rol === "cliente"
-    ? String(hogar?.clienteId) === String(perfilId)
-    : String(servicio?.prestadorId) === String(perfilId);
+  const autorizado =
+    perfilId != null &&
+    (
+      rol === "cliente"
+        ? hogar &&
+          String(hogar.clienteId) === String(perfilId)
+        : rol === "prestador" &&
+          servicio &&
+          String(servicio.prestadorId) === String(perfilId)
+    );
 
   if (!presupuesto || !servicio || !autorizado) {
     return <p>Presupuesto no disponible.</p>;
@@ -63,22 +74,41 @@ function PresupuestoDetalle() {
     presupuesto.estado === "Pendiente" &&
     servicio.estado === "Pendiente";
 
-  function responderPresupuesto(estado) {
+  async function responderPresupuesto(estado) {
 
-    if (!puedeResponder) return;
+    if (!puedeResponder || procesando) return;
 
-    if (estado === "Aceptado") {
-
-      editarServicio(servicio.id, {
-        precio: presupuesto.monto,
-        estado: "En proceso"
-      });
+    if (!["Aceptado", "Rechazado"].includes(estado)) {
+      return;
     }
 
-    cambiarEstadoPresupuesto(
-      presupuesto.id,
-      estado
-    );
+    const mensaje = estado === "Aceptado"
+      ? "¿Confirmás que querés aceptar este presupuesto?"
+      : "¿Confirmás que querés rechazar este presupuesto?";
+
+    if (!window.confirm(mensaje)) return;
+
+    setError("");
+    setProcesando(true);
+
+    try {
+
+      await cambiarEstadoPresupuesto(
+        presupuesto.id,
+        estado
+      );
+
+    } catch (error) {
+
+      setError(
+        error.message || "No se pudo responder el presupuesto."
+      );
+
+    } finally {
+
+      setProcesando(false);
+
+    }
   }
 
   return (
@@ -112,7 +142,9 @@ function PresupuestoDetalle() {
 
           <div className="perfil-dato">
             <span>Fecha</span>
-            <strong>{presupuesto.fecha}</strong>
+            <strong>
+              {String(presupuesto.fecha ?? "").slice(0, 10)}
+            </strong>
           </div>
 
           <div className="perfil-dato">
@@ -135,6 +167,18 @@ function PresupuestoDetalle() {
 
         </div>
 
+        {error && (
+          <p className="login-message" role="alert">
+            {error}
+          </p>
+        )}
+
+        {procesando && (
+          <p className="panel-vacio">
+            Procesando respuesta...
+          </p>
+        )}
+
         <div className="crud-form-actions">
 
           <Link to={`/${rol}/presupuestos`}>
@@ -146,6 +190,7 @@ function PresupuestoDetalle() {
               <button
                 type="button"
                 className="presupuesto-rechazar"
+                disabled={procesando}
                 onClick={() =>
                   responderPresupuesto("Rechazado")
                 }
@@ -156,6 +201,7 @@ function PresupuestoDetalle() {
               <button
                 type="button"
                 className="perfil-boton"
+                disabled={procesando}
                 onClick={() =>
                   responderPresupuesto("Aceptado")
                 }
