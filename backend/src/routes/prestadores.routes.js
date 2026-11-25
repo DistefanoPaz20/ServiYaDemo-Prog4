@@ -8,6 +8,20 @@ const crearControladorCrud = require(
 
 const router = express.Router();
 
+const pool = require("../config/db");
+
+const autenticar = require(
+  "../middlewares/auth.middleware"
+);
+
+const autorizarRoles = require(
+  "../middlewares/roles.middleware"
+);
+
+const { soloPerfilPropio } = require(
+  "../middlewares/permisos.middleware"
+);
+
 function validarPrestador(datos) {
   const oficioId = Number(datos.oficioId);
 
@@ -142,16 +156,85 @@ async function verificarEliminacion(req, res, next) {
   }
 }
 
-router.get("/", controlador.listar);
+router.use(autenticar);
 
-router.get("/:id", controlador.obtenerPorId);
+router.get("/", async (req, res, next) => {
+  try {
+    if (req.usuario.rol === "admin") {
+      return controlador.listar(req, res);
+    }
 
-router.post("/", controlador.crear);
+    if (req.usuario.rol === "prestador") {
+      const [rows] = await pool.execute(
+        "SELECT * FROM prestadores WHERE id = ?",
+        [req.usuario.perfilId]
+      );
 
-router.put("/:id", controlador.actualizar);
+      return res.json(rows);
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT id, oficioId, nombre, apellido,
+              experiencia, estado
+       FROM prestadores
+       WHERE estado = 'Activo'`
+    );
+
+    res.json(rows);
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get(
+  "/:id",
+  autorizarRoles("admin", "prestador"),
+  soloPerfilPropio,
+  controlador.obtenerPorId
+);
+
+router.post(
+  "/",
+  autorizarRoles("admin"),
+  controlador.crear
+);
+
+router.put(
+  "/:id",
+  autorizarRoles("admin", "prestador"),
+  soloPerfilPropio,
+  async (req, res, next) => {
+    try {
+      if (req.usuario.rol === "prestador") {
+        const prestador = await modelo.obtenerPorId(
+          req.usuario.perfilId
+        );
+
+        if (!prestador) {
+          return res.status(404).json({
+            message: "Prestador no encontrado"
+          });
+        }
+
+        req.body = {
+          ...req.body,
+          estado: prestador.estado
+        };
+      }
+
+      next();
+
+    } catch (error) {
+      next(error);
+    }
+  },
+  controlador.actualizar
+);
 
 router.delete(
   "/:id",
+  autorizarRoles("admin"),
   verificarEliminacion,
   controlador.eliminar
 );

@@ -6,6 +6,14 @@ const crearControladorCrud = require(
   "../controllers/crud.controller"
 );
 
+const autenticar = require(
+  "../middlewares/auth.middleware"
+);
+
+const autorizarRoles = require(
+  "../middlewares/roles.middleware"
+);
+
 const router = express.Router();
 
 const modelo = crearModeloCrud("oficios");
@@ -48,14 +56,33 @@ const controlador = crearControladorCrud(
   "Oficio"
 );
 
+// CONSULTAS PUBLICAS
+
 router.get("/", controlador.listar);
 
 router.get("/:id", controlador.obtenerPorId);
 
-router.post("/", controlador.crear);
+// OPERACIONES EXCLUSIVAS DEL ADMINISTRADOR
 
-router.put("/:id", controlador.actualizar);
+router.post(
+  "/",
+  autenticar,
+  autorizarRoles("admin"),
+  controlador.crear
+);
 
-router.delete("/:id", controlador.eliminar);
+router.put(
+  "/:id",
+  autenticar,
+  autorizarRoles("admin"),
+  controlador.actualizar
+);
+
+router.delete(
+  "/:id",
+  autenticar,
+  autorizarRoles("admin"),
+  controlador.eliminar
+);
 
 module.exports = router;

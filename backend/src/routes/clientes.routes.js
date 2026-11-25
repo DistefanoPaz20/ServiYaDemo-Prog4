@@ -1,19 +1,72 @@
 const express = require("express");
-
-const router = express.Router();
+const pool = require("../config/db");
 
 const clientesController = require(
   "../controllers/cliente.controller"
 );
 
-router.get("/", clientesController.listar);
+const autenticar = require(
+  "../middlewares/auth.middleware"
+);
 
-router.get("/:id", clientesController.obtenerPorId);
+const autorizarRoles = require(
+  "../middlewares/roles.middleware"
+);
 
-router.post("/", clientesController.crear);
+const { soloPerfilPropio } = require(
+  "../middlewares/permisos.middleware"
+);
 
-router.put("/:id", clientesController.actualizar);
+const router = express.Router();
 
-router.delete("/:id", clientesController.eliminar);
+router.use(autenticar);
+
+router.get(
+  "/",
+  autorizarRoles("admin", "cliente"),
+  async (req, res, next) => {
+    if (req.usuario.rol === "admin") {
+      return clientesController.listar(req, res);
+    }
+
+    try {
+      const [rows] = await pool.execute(
+        "SELECT * FROM clientes WHERE id = ?",
+        [req.usuario.perfilId]
+      );
+
+      res.json(rows);
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/:id",
+  autorizarRoles("admin", "cliente"),
+  soloPerfilPropio,
+  clientesController.obtenerPorId
+);
+
+router.post(
+  "/",
+  autorizarRoles("admin"),
+  clientesController.crear
+);
+
+router.put(
+  "/:id",
+  autorizarRoles("admin", "cliente"),
+  soloPerfilPropio,
+  clientesController.actualizar
+);
+
+router.delete(
+  "/:id",
+  autorizarRoles("admin"),
+  clientesController.eliminar
+);
 
 module.exports = router;

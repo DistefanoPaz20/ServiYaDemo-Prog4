@@ -6,6 +6,19 @@ const crearControladorCrud = require(
   "../controllers/crud.controller"
 );
 
+const autenticar = require(
+  "../middlewares/auth.middleware"
+);
+
+const autorizarRoles = require(
+  "../middlewares/roles.middleware"
+);
+
+const {
+  hogarPropio,
+  asignarCliente
+} = require("../middlewares/permisos.middleware");
+
 const router = express.Router();
 
 const modelo = crearModeloCrud("hogares");
@@ -129,26 +142,59 @@ async function verificarCambioCliente(req, res, next) {
     next();
 
   } catch (error) {
-    console.error(error.message);
-
-    res.status(500).json({
-      message: "Error interno del servidor"
-    });
+    next(error);
   }
 }
 
-router.get("/", controlador.listar);
+router.use(
+  autenticar,
+  autorizarRoles("admin", "cliente")
+);
 
-router.get("/:id", controlador.obtenerPorId);
+router.get("/", async (req, res, next) => {
+  if (req.usuario.rol === "admin") {
+    return controlador.listar(req, res);
+  }
 
-router.post("/", controlador.crear);
+  try {
+    const [rows] = await pool.execute(
+      `SELECT * FROM hogares
+       WHERE clienteId = ?
+       ORDER BY id DESC`,
+      [req.usuario.perfilId]
+    );
+
+    res.json(rows);
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get(
+  "/:id",
+  hogarPropio,
+  controlador.obtenerPorId
+);
+
+router.post(
+  "/",
+  asignarCliente,
+  controlador.crear
+);
 
 router.put(
   "/:id",
+  hogarPropio,
+  asignarCliente,
   verificarCambioCliente,
   controlador.actualizar
 );
 
-router.delete("/:id", controlador.eliminar);
+router.delete(
+  "/:id",
+  hogarPropio,
+  controlador.eliminar
+);
 
 module.exports = router;

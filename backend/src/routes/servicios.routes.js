@@ -11,6 +11,19 @@ const router = express.Router();
 
 const modelo = crearModeloCrud("servicios");
 
+const autenticar = require(
+  "../middlewares/auth.middleware"
+);
+
+const autorizarRoles = require(
+  "../middlewares/roles.middleware"
+);
+
+const {
+  servicioPropio,
+  validarSolicitudCliente
+} = require("../middlewares/permisos.middleware");
+
 function validarServicio(datos) {
   const hogarId = Number(datos.hogarId);
 
@@ -197,64 +210,137 @@ async function verificarPrestador(req, res, next) {
   }
 }
 
-router.get("/", controlador.listar);
+const Servicio = require("../models/servicios.model");
 
-router.get("/:id", controlador.obtenerPorId);
+router.use(autenticar);
+
+router.get("/", async (req, res, next) => {
+  try {
+    if (req.usuario.rol === "admin") {
+      return controlador.listar(req, res);
+    }
+
+    if (req.usuario.rol === "cliente") {
+      const [rows] = await pool.execute(
+        `SELECT s.*
+         FROM servicios s
+         INNER JOIN hogares h ON h.id = s.hogarId
+         WHERE h.clienteId = ?
+         ORDER BY s.id DESC`,
+        [req.usuario.perfilId]
+      );
+
+      return res.json(rows);
+    }
+
+    if (req.usuario.rol === "prestador") {
+      const [rows] = await pool.execute(
+        `SELECT * FROM servicios
+         WHERE prestadorId = ?
+         ORDER BY id DESC`,
+        [req.usuario.perfilId]
+      );
+
+      return res.json(rows);
+    }
+
+    res.status(403).json({
+      message: "Acceso denegado"
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get(
+  "/:id",
+  servicioPropio,
+  controlador.obtenerPorId
+);
 
 router.post(
   "/",
+  autorizarRoles("admin", "cliente"),
+  validarSolicitudCliente,
   verificarPrestador,
   controlador.crear
 );
 
 router.put(
   "/:id",
+  autorizarRoles("admin"),
   verificarPrestador,
   controlador.actualizar
 );
 
-router.delete("/:id", controlador.eliminar);
+router.delete(
+  "/:id",
+  autorizarRoles("admin"),
+  controlador.eliminar
+);
 
-const Servicio = require("../models/servicios.model");
+router.patch(
+  "/:id/estado",
+  autorizarRoles("admin", "cliente", "prestador"),
+  servicioPropio,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { estado } = req.body || {};
 
-router.patch("/:id/estado", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado } = req.body || {};
+      if (
+        !/^\d+$/.test(id) ||
+        !Number.isSafeInteger(Number(id)) ||
+        Number(id) <= 0 ||
+        Number(id) > 2147483647
+      ) {
+        return res.status(400).json({
+          message: "ID no valido"
+        });
+      }
 
-    if (
-      !/^\d+$/.test(id) ||
-      !Number.isSafeInteger(Number(id)) ||
-      Number(id) <= 0 ||
-      Number(id) > 2147483647
-    ) {
-      return res.status(400).json({
-        message: "ID no valido"
+      if (!["Cancelado", "Finalizado"].includes(estado)) {
+        return res.status(400).json({
+          message: "Estado no valido"
+        });
+      }
+
+      if (
+        req.usuario.rol === "cliente" &&
+        estado !== "Cancelado"
+      ) {
+        return res.status(403).json({
+          message: "El cliente solo puede cancelar solicitudes"
+        });
+      }
+
+      if (
+        req.usuario.rol === "prestador" &&
+        estado !== "Finalizado"
+      ) {
+        return res.status(403).json({
+          message: "El prestador solo puede finalizar trabajos"
+        });
+      }
+
+      const servicio = await Servicio.cambiarEstado(
+        id,
+        estado
+      );
+
+      res.json(servicio);
+
+    } catch (error) {
+      console.error(error.message);
+
+      res.status(error.status || 500).json({
+        message: error.status
+          ? error.message
+          : "Error interno del servidor"
       });
     }
-
-    if (!["Cancelado", "Finalizado"].includes(estado)) {
-      return res.status(400).json({
-        message: "Estado no valido"
-      });
-    }
-
-    const servicio = await Servicio.cambiarEstado(
-      id,
-      estado
-    );
-
-    res.json(servicio);
-
-  } catch (error) {
-    console.error(error.message);
-
-    res.status(error.status || 500).json({
-      message: error.status
-        ? error.message
-        : "Error interno del servidor"
-    });
   }
-});
+);
 
 module.exports = router;

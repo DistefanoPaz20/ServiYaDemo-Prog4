@@ -12,6 +12,7 @@ const oficiosRoutes = require("./routes/oficios.routes");
 const prestadoresRoutes = require("./routes/prestadores.routes");
 const serviciosRoutes = require("./routes/servicios.routes");
 const presupuestosRoutes = require("./routes/presupuestos.routes");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 
@@ -19,7 +20,8 @@ const app = express();
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173"
+    origin: process.env.FRONTEND_URL ||
+      "http://localhost:5173"
   })
 );
 
@@ -60,6 +62,7 @@ app.get("/api/db-test", async (req, res) => {
 
 // RUTAS DE LA API
 
+app.use("/api/auth", authRoutes);
 app.use("/api/clientes", clientesRoutes);
 app.use("/api/hogares", hogaresRoutes);
 app.use("/api/oficios", oficiosRoutes);
@@ -97,6 +100,16 @@ const PORT = process.env.PORT || 3000;
 
 async function iniciarServidor() {
   try {
+    if (
+      !process.env.JWT_SECRET ||
+      process.env.JWT_SECRET.length < 32 ||
+      process.env.JWT_SECRET === "REEMPLAZAR_CON_SECRETO_SEGURO"
+    ) {
+      throw new Error(
+        "Configure una clave JWT_SECRET segura en el archivo .env"
+      );
+    }
+
     await pool.query("SELECT 1");
 
     console.log("Conexion con MySQL exitosa");
@@ -107,7 +120,7 @@ async function iniciarServidor() {
 
   } catch (error) {
     console.error(
-      "No se pudo conectar con MySQL:",
+      "No se pudo iniciar el servidor:",
       error.message
     );
 
@@ -116,3 +129,4 @@ async function iniciarServidor() {
 }
 
 iniciarServidor();
+
