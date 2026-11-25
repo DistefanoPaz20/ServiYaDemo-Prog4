@@ -11,13 +11,16 @@ import {
 
 import useServiciosStore from "../../store/serviciosStore";
 import usePrestadoresStore from "../../store/prestadoresStore";
+import useAuthStore from "../../store/authStore";
+import state  from "../../../../backend/src/config/db";
 
 function PrestadorDashboard() {
 
-  // Prestador provisional hasta implementar JWT
-
-  const prestadorId = 1;
-
+  const usuario=useAuthStore(
+    (state)=>state.usuario
+  )
+  const prestadorId=usuario?.perfilId
+  
   const servicios = useServiciosStore(
     (state) => state.servicios
   );
@@ -105,7 +108,7 @@ function PrestadorDashboard() {
       <div className="panel-bienvenida">
 
         <h2>
-          ¡Bienvenido, {prestador?.nombre ?? "profesional"}!
+        ¡Bienvenido, {usuario?.nombre ?? "profesional"}!
         </h2>
 
         <p>
@@ -216,8 +219,7 @@ function PrestadorDashboard() {
           <div className="panel-servicios">
 
             {misServicios
-              .slice(-5)
-              .reverse()
+             .splice(0,5)
               .map((servicio) => (
 
                 <article

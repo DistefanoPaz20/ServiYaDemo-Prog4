@@ -13,12 +13,18 @@ import useHogaresStore from "../../store/hogaresStore";
 import useServiciosStore from "../../store/serviciosStore";
 import usePresupuestosStore from "../../store/presupuestosStore";
 import useClientesStore from "../../store/clientesStore";
+import useAuthStore from "../../store/authStore";
+import  state  from "../../../../backend/src/config/db";
 
 function ClienteDashboard() {
 
-  // Cliente provisional hasta implementar JWT
 
-  const clienteId = 1;
+  const usuario=useAuthStore(
+    (state)=> state.usuario
+  );
+
+  const clienteId= usuario?.perfilId
+
 
   const hogares = useHogaresStore(
     (state) => state.hogares
@@ -111,8 +117,8 @@ function ClienteDashboard() {
       <div className="panel-bienvenida">
 
         <h2>
-          ¡Bienvenido, {cliente?.nombre ?? "cliente"}!
-        </h2>
+      ¡Bienvenido, {usuario?.nombre ?? "cliente"}!
+          </h2>
 
         <p>
           Gestioná tus hogares y servicios desde un solo lugar.
@@ -219,8 +225,7 @@ function ClienteDashboard() {
           <div className="panel-servicios">
 
             {misServicios
-              .slice(-5)
-              .reverse()
+              .slice(0,5)
               .map((servicio) => (
 
                 <article

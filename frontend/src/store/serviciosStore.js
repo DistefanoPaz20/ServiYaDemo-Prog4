@@ -1,44 +1,60 @@
+import crearCrudStore from "./crearCrudStore";
+import api from "../services/api";
+import useAuthStore from "./authStore";
 
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+const useServiciosStore = crearCrudStore({
+  entidad: "servicios",
+  endpoint: "/servicios",
+  cargar: "cargarServicios",
+  agregar: "agregarServicio",
+  editar: "editarServicio",
+  eliminar: "eliminarServicio"
+});
 
-const useServiciosStore = create(
-  persist(
-    (set) => ({
-      servicios: [],
+useServiciosStore.setState({
 
-      agregarServicio: (servicio) =>
-        set((state) => ({
-          servicios: [
-            ...state.servicios,
-            {
-              ...servicio,
-              id: crypto.randomUUID()
-            }
-          ]
-        })),
+  cambiarEstadoServicio: async (id, estado) => {
+    const token = useAuthStore.getState().token;
 
-      editarServicio: (id, datos) =>
-        set((state) => ({
-          servicios: state.servicios.map((servicio) =>
-            String(servicio.id) === String(id)
-              ? { ...servicio, ...datos }
-              : servicio
-          )
-        })),
+    useServiciosStore.setState({
+      cargando: true,
+      error: null
+    });
 
-      eliminarServicio: (id) =>
-        set((state) => ({
-          servicios: state.servicios.filter(
-            (servicio) =>
-              String(servicio.id) !== String(id)
-          )
-        }))
-    }),
-    {
-      name: "serviya-servicios"
+    try {
+      const servicio = await api(
+        `/servicios/${id}/estado`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ estado })
+        }
+      );
+
+      if (token !== useAuthStore.getState().token) {
+        throw new Error("La sesión ha cambiado.");
+      }
+
+      await useServiciosStore.getState().cargarServicios();
+
+      return servicio;
+
+    } catch (error) {
+      if (token === useAuthStore.getState().token) {
+        useServiciosStore.setState({
+          error: error.message
+        });
+      }
+
+      throw error;
+
+    } finally {
+      if (token === useAuthStore.getState().token) {
+        useServiciosStore.setState({
+          cargando: false
+        });
+      }
     }
-  )
-);
+  }
+});
 
 export default useServiciosStore;
