@@ -3,8 +3,7 @@ USE serviya_app;
 START TRANSACTION;
 
 -- 1. USUARIOS (3 registros)
-
-SET @passwordHash = '$2b$10$kPbRzHfQdjtmHTV65a2f7.yPAQjApC2eVSe7JSMi.UmL.GwXh8.pe';
+SET @passwordHash = '$2b$10$dpYBFQum4jBSHQUHF3cpx.riYgUD0avvtFp0M0QJQN1.cqhVuNplm';
 
 INSERT INTO usuarios (id, nombre, email, password, rol)
 VALUES
